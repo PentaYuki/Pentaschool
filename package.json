@@ -22,6 +22,7 @@
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.1",
     "@prisma/client": "6.19.2",
+    "@supabase/supabase-js": "^2.101.0",
     "@types/dompurify": "^3.0.5",
     "@types/katex": "^0.16.8",
     "@types/node": "^25.2.3",

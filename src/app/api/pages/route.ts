@@ -161,7 +161,9 @@ export async function GET(request: NextRequest) {
       page.children.sort((a: any, b: any) => a.order - b.order);
     }
 
-    return NextResponse.json(roots);
+    return NextResponse.json(roots, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+    });
   } catch (error) {
     console.error("Error fetching pages:", error);
     return NextResponse.json(

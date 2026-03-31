@@ -33,6 +33,19 @@ interface ParsedQuestion {
   warnMsg?: string;
 }
 
+function ensureLatexDelimiters(latex: string): string {
+  const trimmed = latex.trim();
+  if (!trimmed) return trimmed;
+  if (
+    trimmed.startsWith("$") ||
+    trimmed.startsWith("\\(") ||
+    trimmed.startsWith("\\[")
+  ) {
+    return trimmed;
+  }
+  return `$${trimmed}$`;
+}
+
 /* ─── Difficulty mapping ── */
 function numToDifficulty(n: number): 'EASY' | 'MEDIUM' | 'HARD' {
   if (n <= 1) return 'EASY';
@@ -550,7 +563,7 @@ export async function POST(request: NextRequest) {
           const latexMarkerMatch = src.match(/^\[\[LATEX:([\s\S]*)\]\]$/);
           if (latexMarkerMatch) {
             // Return LaTeX inline so LaTeXRenderer can render it properly
-            const latex = latexMarkerMatch[1].trim();
+            const latex = ensureLatexDelimiters(latexMarkerMatch[1]);
             return ` ${latex} `;
           }
 

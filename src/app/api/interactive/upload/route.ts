@@ -3,6 +3,12 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
 import JSZip from 'jszip';
+import {
+  getStoragePublicUrl,
+  guessContentTypeByFilename,
+  hasSupabaseStorageConfig,
+  uploadBufferToStorage,
+} from '@/lib/supabase-storage';
 
 // Sanitize filename: remove path traversal, special chars, only allow safe names
 function sanitizeFilename(name: string): string | null {
@@ -60,10 +66,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
     const folderId = `${timestamp}-${random}`;
-
-    // Target extraction directory
-    const interactiveDir = path.join(process.cwd(), 'public', 'interactive', folderId);
-    await mkdir(interactiveDir, { recursive: true });
+    const useSupabaseStorage = hasSupabaseStorageConfig();
 
     // Read and parse ZIP
     const bytes = await file.arrayBuffer();
@@ -76,6 +79,63 @@ export async function POST(request: NextRequest) {
     // Extract files
     const entries = Object.entries(zip.files);
     let indexHtmlPath: string | null = null;
+
+    if (useSupabaseStorage) {
+      for (const [relativePath, zipEntry] of entries) {
+        if (zipEntry.dir) continue;
+
+        const safePath = sanitizeFilename(relativePath);
+        if (!safePath) {
+          console.warn(`Skipping unsafe path: ${relativePath}`);
+          continue;
+        }
+
+        const content = await zipEntry.async('nodebuffer');
+
+        totalExtractedSize += content.length;
+        if (totalExtractedSize > maxExtractedSize) {
+          return NextResponse.json(
+            { error: 'Extracted content exceeds 500MB limit (possible zip bomb)' },
+            { status: 400 }
+          );
+        }
+
+        const objectPath = `interactive/${folderId}/${safePath}`;
+        await uploadBufferToStorage({
+          path: objectPath,
+          buffer: content,
+          contentType: guessContentTypeByFilename(safePath),
+        });
+
+        const lowerPath = safePath.toLowerCase();
+        if (lowerPath === 'index.html' || lowerPath.endsWith('/index.html')) {
+          if (!indexHtmlPath || safePath.split('/').length < indexHtmlPath.split('/').length) {
+            indexHtmlPath = safePath;
+          }
+        }
+      }
+
+      if (!indexHtmlPath) {
+        return NextResponse.json(
+          { error: 'ZIP file must contain an index.html file' },
+          { status: 400 }
+        );
+      }
+
+      const url = getStoragePublicUrl(`interactive/${folderId}/${indexHtmlPath}`);
+
+      return NextResponse.json({
+        url,
+        id: folderId,
+        indexPath: indexHtmlPath,
+        name: file.name,
+        size: file.size,
+      });
+    }
+
+    // Target extraction directory
+    const interactiveDir = path.join(process.cwd(), 'public', 'interactive', folderId);
+    await mkdir(interactiveDir, { recursive: true });
 
     for (const [relativePath, zipEntry] of entries) {
       if (zipEntry.dir) continue;

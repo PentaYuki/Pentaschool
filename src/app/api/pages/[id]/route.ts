@@ -88,7 +88,9 @@ export async function GET(
       return NextResponse.json({ error: "Page not found" }, { status: 404 });
     }
 
-    return NextResponse.json(page);
+    return NextResponse.json(page, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+    });
   } catch (error) {
     console.error("Error fetching page:", error);
     return NextResponse.json(

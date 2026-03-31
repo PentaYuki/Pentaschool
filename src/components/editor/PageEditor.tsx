@@ -252,7 +252,10 @@ export default function PageEditor({ authorId, readOnly = false, initialTitle, p
       const newPage = await response.json();
       
       // Refetch all pages
-      const allPagesResponse = await fetch(`/api/pages?authorId=${authorId}`);
+      const allPagesResponse = await fetch(`/api/pages?authorId=${authorId}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache" },
+      });
       if (allPagesResponse.ok) {
         const updatedPages = await allPagesResponse.json();
         setPages(updatedPages);
@@ -402,7 +405,10 @@ export default function PageEditor({ authorId, readOnly = false, initialTitle, p
       }
 
       // Refetch pages to ensure consistency
-      const allPagesResponse = await fetch(`/api/pages?authorId=${authorId}`);
+      const allPagesResponse = await fetch(`/api/pages?authorId=${authorId}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache" },
+      });
       if (allPagesResponse.ok) {
         const updatedPages = await allPagesResponse.json();
         setPages(updatedPages);
@@ -490,7 +496,10 @@ export default function PageEditor({ authorId, readOnly = false, initialTitle, p
     if (!selectedPageId) return;
 
     try {
-      const response = await fetch(`/api/pages/${selectedPageId}`);
+      const response = await fetch(`/api/pages/${selectedPageId}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache" },
+      });
       if (!response.ok) throw new Error("Failed to fetch updated page");
 
       const updated = await response.json();
