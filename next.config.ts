@@ -9,7 +9,23 @@ const nextConfig = {
     "172.16.0.0/12",
     "169.254.83.107",
     "169.254.0.0/16"
-  ]
+  ],
+  outputFileTracingExcludes: {
+    "/*": [
+      "./backup/**",
+      "./md_fil/**",
+      "./prisma/dev.db",
+      "./prisma/prisma/**",
+      "./public/videos/**",
+      "./public/interactive/**",
+      "./response*.json",
+      "./src/app.rar",
+      "./*.zip",
+      "./*.pdf",
+      "./*.docx",
+      "./test_upload.docx"
+    ]
+  }
 };
 
 export default nextConfig;
