@@ -10,6 +10,7 @@ import {
 } from '@/utils/exam-answer-inference';
 import { convertWmfImage, isWmfImage, isDisplayableImage as isDisplayableImageUtil, batchConvertWmfImages } from '@/utils/wmf-converter';
 import { preprocessDocxMath, resolveLatexMarkers } from '@/utils/omml-to-latex';
+import { extractOleFormulas, replaceOleImagesWithLatex, type OleFormula } from '@/utils/ole-extractor';
 
 const prisma = new PrismaClient();
 
@@ -462,6 +463,16 @@ export async function POST(request: NextRequest) {
           console.warn('[parse] OMML math preprocessing failed, using original buffer:', err);
         }
       }
+      
+      // ── Extract OLE objects (MathType formulas) from Word document ──
+      let oleFormulas = new Map<string, OleFormula>();
+      try {
+        oleFormulas = await extractOleFormulas(buffer);
+        console.log(`[parse] Extracted ${oleFormulas.size} OLE formulas from document`);
+      } catch (err) {
+        console.warn('[parse] OLE formula extraction failed (non-fatal):', err);
+      }
+      
       const docx = await extractDocxContent(processedBuffer);
       docImages = docx.images;
       // Use HTML-based parsing for proper image-to-question binding
@@ -477,11 +488,27 @@ export async function POST(request: NextRequest) {
           wmfEntries.push({ index: idx, base64: src });
         }
       }
-      if (wmfEntries.length > 0) {
-        console.log(`[parse] Found ${wmfEntries.length} WMF images in imageMap, starting batch conversion...`);
-        const batchResult = await batchConvertWmfImages(wmfEntries);
+      
+      // ── First, try to replace WMF images with extracted OLE formulas ──
+      let replacedWithOleCount = 0;
+      if (oleFormulas.size > 0) {
+        console.log(`[parse] Attempting to replace ${wmfEntries.length} WMF images with ${oleFormulas.size} extracted OLE formulas`);
+        const replaced = replaceOleImagesWithLatex(wmfEntries, oleFormulas, imageMap);
+        replacedWithOleCount = replaced;
+        console.log(`[parse] Successfully replaced ${replaced} WMF images with OLE formulas`);
+      }
+      
+      // ── For remaining WMF images, attempt batch conversion to PNG ──
+      const remainingWmfEntries = wmfEntries.filter(entry => {
+        const currentSrc = imageMap.get(entry.index);
+        return currentSrc && isWmfImage(currentSrc);
+      });
+      
+      if (remainingWmfEntries.length > 0) {
+        console.log(`[parse] Converting remaining ${remainingWmfEntries.length} WMF images to PNG`);
+        const batchResult = await batchConvertWmfImages(remainingWmfEntries);
         let convertedCount = 0;
-        for (const entry of wmfEntries) {
+        for (const entry of remainingWmfEntries) {
           const converted = batchResult.get(entry.index);
           if (converted) {
             imageMap.set(entry.index, converted);
@@ -495,8 +522,10 @@ export async function POST(request: NextRequest) {
             } catch { /* keep original */ }
           }
         }
-        console.log(`[parse] WMF images: ${wmfEntries.length} found, ${convertedCount} converted to PNG`);
+        console.log(`[parse] WMF conversion: ${remainingWmfEntries.length} found, ${convertedCount} converted to PNG`);
       }
+      
+      console.log(`[parse] WMF processing complete: ${replacedWithOleCount} replaced with OLE formulas, ${wmfEntries.length - replacedWithOleCount} converted to PNG/kept as-is`);
 
       const parsed = parseAnnotatedLines(lines, imageMap);
       questions = parsed.questions;
