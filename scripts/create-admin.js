@@ -5,9 +5,9 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function createAdmin() {
-  const email = 'admin@gmail.com';
+  const email = 'tk@admin.com';
   const password = '01223715643';
-  const name = 'Admin';
+  const name = 'admin';
 
   try {
     // Kiểm tra email đã tồn tại chưa
