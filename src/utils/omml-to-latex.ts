@@ -261,8 +261,24 @@ function ommlNodeToMathml(omml: string): string {
 }
 
 /**
+ * Extract raw text content from OMML XML by pulling text from <m:t> elements.
+ * Used as fallback when full LaTeX conversion fails.
+ */
+function extractRawTextFromOmml(ommlXml: string): string {
+  const parts: string[] = [];
+  const mtRegex = /<m:t\b[^>]*>([^<]*)<\/m:t>/gi;
+  let m;
+  while ((m = mtRegex.exec(ommlXml)) !== null) {
+    const t = m[1].trim();
+    if (t) parts.push(t);
+  }
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Convert OMML XML fragment to LaTeX string.
  * Pipeline: OMML → MathML → LaTeX (via mathml-to-latex library)
+ * Falls back to raw text extraction if conversion fails.
  */
 function ommlFragmentToLatex(ommlXml: string): string {
   try {
@@ -273,14 +289,15 @@ function ommlFragmentToLatex(ommlXml: string): string {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { MathMLToLaTeX } = require('mathml-to-latex');
     const latex = MathMLToLaTeX.convert(mathml);
-    // Clean up some common artifacts
-    return latex
-      .replace(/\s+/g, ' ')
-      .trim();
+    const cleaned = latex.replace(/\s+/g, ' ').trim();
+    if (cleaned) return cleaned;
   } catch (err) {
-    console.warn('[omml-to-latex] Conversion failed for fragment, returning placeholder:', err);
-    return '\\text{[formula]}';
+    console.warn('[omml-to-latex] LaTeX conversion failed, trying raw text fallback:', err);
   }
+  // Fallback: extract raw text from <m:t> elements so formula content is not lost
+  const rawText = extractRawTextFromOmml(ommlXml);
+  if (rawText) return rawText;
+  return '\\text{[formula]}';
 }
 
 /* ─── Main: process a .docx buffer ─── */
@@ -359,8 +376,8 @@ export async function preprocessDocxMath(buffer: Buffer): Promise<Buffer> {
       if (latexContent) {
         return `<w:r><w:t xml:space="preserve"> [[LATEX:$${latexContent}$]] </w:t></w:r>`;
       }
-      // Return a space to avoid breaking the document flow
-      return `<w:r><w:t xml:space="preserve"> </w:t></w:r>`;
+      // No extractable text — insert a visible placeholder instead of invisible space
+      return `<w:r><w:t xml:space="preserve"> [formula] </w:t></w:r>`;
     });
 
     if (oleReplacedCount > 0) {
@@ -400,11 +417,17 @@ export async function preprocessDocxMath(buffer: Buffer): Promise<Buffer> {
         }
       }
       if (oMathBlocks.length > 0) {
-        // Wrap in a Word paragraph run so mammoth outputs it as text
         const combined = oMathBlocks.join(' ');
         return `<w:r><w:t xml:space="preserve"> [[LATEX:$$${combined}$$]] </w:t></w:r>`;
       }
-      return _match; // keep original if conversion failed
+      // NEVER return original OMML — mammoth will strip it and lose all formula content.
+      // Extract raw text as last resort.
+      const rawText = extractRawTextFromOmml(inner);
+      if (rawText) {
+        convertedCount++;
+        return `<w:r><w:t xml:space="preserve"> [[LATEX:$$${rawText}$$]] </w:t></w:r>`;
+      }
+      return `<w:r><w:t xml:space="preserve"> [formula] </w:t></w:r>`;
     });
 
     // ── Replace remaining <m:oMath>...</m:oMath> (inline math) ──
@@ -416,7 +439,13 @@ export async function preprocessDocxMath(buffer: Buffer): Promise<Buffer> {
         convertedCount++;
         return `<w:r><w:t xml:space="preserve"> [[LATEX:$${latex}$]] </w:t></w:r>`;
       }
-      return _match; // keep original if conversion failed
+      // NEVER return original OMML — mammoth will strip it and lose all formula content.
+      const rawText = extractRawTextFromOmml(inner);
+      if (rawText) {
+        convertedCount++;
+        return `<w:r><w:t xml:space="preserve"> [[LATEX:$${rawText}$]] </w:t></w:r>`;
+      }
+      return `<w:r><w:t xml:space="preserve"> [formula] </w:t></w:r>`;
     });
 
     if (mathCount > 0) {
@@ -428,8 +457,8 @@ export async function preprocessDocxMath(buffer: Buffer): Promise<Buffer> {
       console.log(`[omml-to-latex] No OMML math found in document.xml.${hasOle ? ' Document contains OLE objects (MathType).' : ''}${hasWmf ? ' WMF images detected — will convert via GDI+/LibreOffice.' : ''}`);
     }
 
-    if (convertedCount === 0 && oleReplacedCount === 0) {
-      return buffer; // no changes, return original
+    if (mathCount === 0 && oleReplacedCount === 0) {
+      return buffer; // no math found at all, return original
     }
 
     // Write modified XML back into the zip
