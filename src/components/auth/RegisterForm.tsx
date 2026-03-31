@@ -86,6 +86,18 @@ export default function RegisterForm() {
     }, 300);
   }, [schoolQuery]);
 
+  useEffect(() => {
+    const mode = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("mode")
+      : null;
+    if (adminBootstrapEnabled && mode === "admin") {
+      setForm(current => ({ ...current, role: "ADMIN" }));
+      setStep(1);
+      setStepKey(key => key + 1);
+      setError("");
+    }
+  }, [adminBootstrapEnabled]);
+
   const goNext = () => {
     setError("");
     if (step === 1) {

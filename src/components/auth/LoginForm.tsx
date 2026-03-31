@@ -8,6 +8,7 @@ import { loginUser } from '@/services/userService';
 
 export default function LoginForm() {
   const router = useRouter();
+  const adminBootstrapEnabled = process.env.NEXT_PUBLIC_ENABLE_ADMIN_BOOTSTRAP === 'true';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -140,6 +141,15 @@ export default function LoginForm() {
           Đăng ký ngay
         </Link>
       </p>
+
+      {adminBootstrapEnabled && (
+        <Link
+          href="/auth/register?mode=admin"
+          className="block w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800 transition hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
+        >
+          Khởi tạo admin đầu tiên
+        </Link>
+      )}
     </form>
   );
 }
