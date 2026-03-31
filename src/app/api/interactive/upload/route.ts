@@ -68,6 +68,15 @@ export async function POST(request: NextRequest) {
     const folderId = `${timestamp}-${random}`;
     const useSupabaseStorage = hasSupabaseStorageConfig();
 
+    if (process.env.VERCEL === '1' && !useSupabaseStorage) {
+      return NextResponse.json(
+        {
+          error: 'Server chua cau hinh SUPABASE_URL va SUPABASE_SERVICE_ROLE_KEY tren Vercel, nen khong the upload ZIP interactive.',
+        },
+        { status: 500 }
+      );
+    }
+
     // Read and parse ZIP
     const bytes = await file.arrayBuffer();
     const zip = await JSZip.loadAsync(bytes);

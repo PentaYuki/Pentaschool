@@ -86,11 +86,11 @@ function toEmbedUrl(url: string): string {
 /** Platforms that need allow-same-origin in sandbox */
 function getSandboxPolicy(url: string): string {
   // Some platforms need same-origin to function
-  const needsSameOrigin = /notion\.site|notion\.so|padlet\.com|genial\.ly|genially\.com|quizlet\.com/i;
+  const needsSameOrigin = /notion\.site|notion\.so|padlet\.com|genial\.ly|genially\.com|quizlet\.com|supabase\.co\/storage\/v1\/object/i;
   if (needsSameOrigin.test(url)) {
-    return "allow-scripts allow-same-origin allow-forms allow-popups allow-presentation";
+    return "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-modals allow-downloads";
   }
-  return "allow-scripts allow-same-origin allow-forms allow-popups";
+  return "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals";
 }
 
 interface EmbedBlockComponentProps {

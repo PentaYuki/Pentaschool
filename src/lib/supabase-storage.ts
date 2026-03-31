@@ -16,6 +16,10 @@ export function hasSupabaseStorageConfig(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 }
 
+export function getStorageBucketName(): string {
+  return STORAGE_BUCKET;
+}
+
 function getSupabaseAdmin() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
@@ -63,6 +67,24 @@ export async function uploadBufferToStorage(params: {
     bucket: STORAGE_BUCKET,
     path: params.path,
     publicUrl: data.publicUrl,
+  };
+}
+
+export async function createSignedUploadForPath(path: string) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUploadUrl(path);
+
+  if (error || !data?.token) {
+    throw new Error(`Failed to create signed upload URL: ${error?.message || "Unknown error"}`);
+  }
+
+  const { data: publicData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+
+  return {
+    path,
+    token: data.token,
+    publicUrl: publicData.publicUrl,
+    bucket: STORAGE_BUCKET,
   };
 }
 

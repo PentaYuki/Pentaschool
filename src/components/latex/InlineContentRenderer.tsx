@@ -21,13 +21,42 @@ export default function InlineContentRenderer({
 }: InlineContentRendererProps) {
   if (!content) return null;
 
+  let normalizedContent = content;
+
+  // Support legacy placeholders like q1-img1 / img1 by mapping to INLINE_IMG markers.
+  normalizedContent = normalizedContent.replace(/\b(?:q\d+-)?img(\d+)\b/gi, (_m, idxStr) => {
+    const oneBased = parseInt(idxStr, 10);
+    if (!Number.isFinite(oneBased) || oneBased <= 0) return _m;
+    const zeroBased = oneBased - 1;
+    return `{{INLINE_IMG:${zeroBased}}}`;
+  });
+
+  // Convert [img:N] placeholders used by parser to INLINE_IMG markers.
+  normalizedContent = normalizedContent.replace(/\[img:(\d+)\]/gi, (_m, idxStr) => {
+    const idx = parseInt(idxStr, 10);
+    if (!Number.isFinite(idx) || idx < 0) return _m;
+    return `{{INLINE_IMG:${idx}}}`;
+  });
+
+  // Some imported docs use square placeholders for missing formula glyphs.
+  // If inline images exist, map each square to the next inline image marker.
+  if (inlineImages.length > 0 && normalizedContent.includes("□") && !normalizedContent.includes("{{INLINE_IMG:")) {
+    let imgIdx = 0;
+    normalizedContent = normalizedContent.replace(/□/g, () => {
+      if (imgIdx >= inlineImages.length) return "";
+      const marker = `{{INLINE_IMG:${imgIdx}}}`;
+      imgIdx += 1;
+      return marker;
+    });
+  }
+
   // If no inline image markers, delegate entirely to LaTeXRenderer
-  if (!content.includes("{{INLINE_IMG:")) {
-    return <LaTeXRenderer content={content} className={className} />;
+  if (!normalizedContent.includes("{{INLINE_IMG:")) {
+    return <LaTeXRenderer content={normalizedContent} className={className} />;
   }
 
   // Split on {{INLINE_IMG:N}} markers
-  const parts = content.split(/(\{\{INLINE_IMG:\d+\}\})/g);
+  const parts = normalizedContent.split(/(\{\{INLINE_IMG:\d+\}\})/g);
 
   return (
     <span

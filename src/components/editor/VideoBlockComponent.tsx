@@ -13,6 +13,7 @@ import {
   detectVideoPlatform,
 } from "@/lib/video-utils";
 import toast from "react-hot-toast";
+import { createClient } from "@supabase/supabase-js";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -84,6 +85,39 @@ const parseInteractions = (raw: VideoInteraction[] | string | undefined): VideoI
   }
   return Array.isArray(raw) ? raw : [];
 };
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+async function uploadVideoDirectToSupabase(file: File): Promise<string | null> {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+
+  const signRes = await fetch("/api/storage/sign-upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder: "videos", fileName: file.name }),
+  });
+
+  if (!signRes.ok) {
+    const e = await signRes.json().catch(() => ({}));
+    throw new Error(e?.error || "Khong tao duoc signed upload URL");
+  }
+
+  const signed = await signRes.json();
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { error } = await supabase.storage
+    .from(signed.bucket)
+    .uploadToSignedUrl(signed.path, signed.token, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(error.message || "Upload video len Supabase that bai");
+  }
+
+  return signed.publicUrl as string;
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    VideoBlockComponent
@@ -258,14 +292,34 @@ function VideoEditModal({
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("video/")) { toast.error("Vui lòng chọn file video"); return; }
     try {
-      const fd = new FormData(); fd.append("file", file);
-      const res = await fetch("/api/videos", { method: "POST", body: fd });
-      if (!res.ok) throw new Error();
-      const { url } = await res.json();
+      let url: string | null = null;
+
+      // Preferred path: direct upload to Supabase via signed URL (avoids Vercel body limits)
+      try {
+        url = await uploadVideoDirectToSupabase(file);
+      } catch (directErr) {
+        console.warn("Direct upload failed, fallback to /api/videos:", directErr);
+      }
+
+      // Fallback path: upload through API route (works for small files/local dev)
+      if (!url) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/videos", { method: "POST", body: fd });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(e?.error || "Upload video thất bại");
+        }
+        const data = await res.json();
+        url = data.url as string;
+      }
+
       setInputUrl(url); setInputMode("file");
       setUploadedFileName(file.name);
       toast.success("Upload thành công");
-    } catch { toast.error("Upload thất bại"); }
+    } catch (err: any) {
+      toast.error(err?.message || "Upload thất bại");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
