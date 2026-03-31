@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run vercel-build",
+  "buildCommand": "prisma db push && npm run build",
   "outputDirectory": ".next",
   "devCommand": "next dev",
   "installCommand": "npm install",
