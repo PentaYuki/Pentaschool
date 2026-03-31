@@ -12,6 +12,7 @@ import {
 import { parseDocxUnderlineInference } from '@/utils/docx-parser-ts';
 import { convertWmfImage, isWmfImage, isDisplayableImage as isDisplayableImageUtil, batchConvertWmfImages } from '@/utils/wmf-converter';
 import { preprocessDocxMath, resolveLatexMarkers } from '@/utils/omml-to-latex';
+import { extractOleFormulas, replaceOleImagesWithLatex, type OleFormula } from '@/utils/ole-extractor';
 
 /* ─── Types ── */
 interface ParsedQuestion {
@@ -527,6 +528,15 @@ export async function POST(request: NextRequest) {
           console.warn('[parse] OMML math preprocessing failed, using original buffer:', err);
         }
       }
+      // ── Extract OLE objects (MathType formulas) from Word document ──
+      let oleFormulas = new Map<string, OleFormula>();
+      try {
+        oleFormulas = await extractOleFormulas(buffer);
+        console.log(`[parse-docx] Extracted ${oleFormulas.size} OLE formulas from document`);
+      } catch (err) {
+        console.warn('[parse-docx] OLE formula extraction failed (non-fatal):', err);
+      }
+
       const docx = await extractDocxContent(processedBuffer);
       docImages = docx.images;
       const tokens = tokenizeHtml(docx.html);
@@ -540,9 +550,22 @@ export async function POST(request: NextRequest) {
           wmfEntries.push({ index: idx, base64: src });
         }
       }
-      if (wmfEntries.length > 0) {
-        const batchResult = await batchConvertWmfImages(wmfEntries);
-        for (const entry of wmfEntries) {
+
+      // ── First, try to replace WMF images with extracted OLE formulas ──
+      if (oleFormulas.size > 0 && wmfEntries.length > 0) {
+        const replaced = replaceOleImagesWithLatex(wmfEntries, oleFormulas, imageMap);
+        console.log(`[parse-docx] Replaced ${replaced} WMF images with OLE formulas`);
+      }
+
+      // ── For remaining WMF images, attempt batch conversion to PNG ──
+      const remainingWmfEntries = wmfEntries.filter(entry => {
+        const currentSrc = imageMap.get(entry.index);
+        return currentSrc && isWmfImage(currentSrc);
+      });
+
+      if (remainingWmfEntries.length > 0) {
+        const batchResult = await batchConvertWmfImages(remainingWmfEntries);
+        for (const entry of remainingWmfEntries) {
           const converted = batchResult.get(entry.index);
           if (converted) {
             imageMap.set(entry.index, converted);

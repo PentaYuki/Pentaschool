@@ -8,6 +8,16 @@
 
 import JSZip from 'jszip';
 
+// Top-level import so Vercel bundler can include it.
+// Dynamic require() inside functions may fail in serverless bundling.
+let MathMLToLaTeX: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  MathMLToLaTeX = require('mathml-to-latex').MathMLToLaTeX;
+} catch {
+  console.warn('[omml-to-latex] mathml-to-latex not available at module load');
+}
+
 /* ─── OMML element → MathML conversion ─── */
 
 /**
@@ -263,40 +273,171 @@ function ommlNodeToMathml(omml: string): string {
 /**
  * Extract raw text content from OMML XML by pulling text from <m:t> elements.
  * Used as fallback when full LaTeX conversion fails.
+ * Also handles case-insensitive namespace and content with XML entities.
  */
 function extractRawTextFromOmml(ommlXml: string): string {
   const parts: string[] = [];
-  const mtRegex = /<m:t\b[^>]*>([^<]*)<\/m:t>/gi;
+  // Match <m:t> with any attributes, and capture content that may contain XML entities
+  const mtRegex = /<m:t\b[^>]*>([\s\S]*?)<\/m:t>/gi;
   let m;
   while ((m = mtRegex.exec(ommlXml)) !== null) {
-    const t = m[1].trim();
+    // Strip any nested XML tags and decode basic entities
+    const t = m[1]
+      .replace(/<[^>]*>/g, '')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .trim();
     if (t) parts.push(t);
   }
-  return parts.join(' ').replace(/\s+/g, ' ').trim();
+  return parts.join('').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Try to build basic LaTeX directly from OMML structure without going through MathML.
+ * This is a simpler but more reliable fallback for when the MathML path fails.
+ */
+function ommlToLatexDirect(ommlXml: string): string {
+  let s = ommlXml;
+  
+  // Strip all property blocks first
+  s = s.replace(/<m:rPr>[\s\S]*?<\/m:rPr>/g, '');
+  s = s.replace(/<w:rPr>[\s\S]*?<\/w:rPr>/g, '');
+  s = s.replace(/<m:ctrlPr>[\s\S]*?<\/m:ctrlPr>/g, '');
+  s = s.replace(/<m:\w+Pr>[\s\S]*?<\/m:\w+Pr>/g, '');
+  
+  // Fractions: <m:f><m:num>...</m:num><m:den>...</m:den></m:f>
+  s = s.replace(/<m:f>([\s\S]*?)<\/m:f>/g, (_m, inner: string) => {
+    const num = (inner.match(/<m:num>([\s\S]*?)<\/m:num>/) || [])[1] || '';
+    const den = (inner.match(/<m:den>([\s\S]*?)<\/m:den>/) || [])[1] || '';
+    const numText = extractRawTextFromOmml(num) || num.replace(/<[^>]*>/g, '').trim();
+    const denText = extractRawTextFromOmml(den) || den.replace(/<[^>]*>/g, '').trim();
+    return `\\frac{${numText}}{${denText}}`;
+  });
+  
+  // Superscript
+  s = s.replace(/<m:sSup>([\s\S]*?)<\/m:sSup>/g, (_m, inner: string) => {
+    const base = (inner.match(/<m:e>([\s\S]*?)<\/m:e>/) || [])[1] || '';
+    const sup = (inner.match(/<m:sup>([\s\S]*?)<\/m:sup>/) || [])[1] || '';
+    const baseText = extractRawTextFromOmml(base) || base.replace(/<[^>]*>/g, '').trim();
+    const supText = extractRawTextFromOmml(sup) || sup.replace(/<[^>]*>/g, '').trim();
+    return `${baseText}^{${supText}}`;
+  });
+  
+  // Subscript
+  s = s.replace(/<m:sSub>([\s\S]*?)<\/m:sSub>/g, (_m, inner: string) => {
+    const base = (inner.match(/<m:e>([\s\S]*?)<\/m:e>/) || [])[1] || '';
+    const sub = (inner.match(/<m:sub>([\s\S]*?)<\/m:sub>/) || [])[1] || '';
+    const baseText = extractRawTextFromOmml(base) || base.replace(/<[^>]*>/g, '').trim();
+    const subText = extractRawTextFromOmml(sub) || sub.replace(/<[^>]*>/g, '').trim();
+    return `${baseText}_{${subText}}`;
+  });
+  
+  // Radicals
+  s = s.replace(/<m:rad>([\s\S]*?)<\/m:rad>/g, (_m, inner: string) => {
+    const deg = (inner.match(/<m:deg>([\s\S]*?)<\/m:deg>/) || [])[1] || '';
+    const base = (inner.match(/<m:e>([\s\S]*?)<\/m:e>/) || [])[1] || '';
+    const degText = extractRawTextFromOmml(deg) || deg.replace(/<[^>]*>/g, '').trim();
+    const baseText = extractRawTextFromOmml(base) || base.replace(/<[^>]*>/g, '').trim();
+    if (!degText) return `\\sqrt{${baseText}}`;
+    return `\\sqrt[${degText}]{${baseText}}`;
+  });
+
+  // Delimiters (parentheses, brackets)
+  s = s.replace(/<m:d>([\s\S]*?)<\/m:d>/g, (_m, inner: string) => {
+    let open = '(';
+    let close = ')';
+    const begMatch = inner.match(/<m:begChr\s+m:val\s*=\s*"([^"]*)"/); 
+    const endMatch = inner.match(/<m:endChr\s+m:val\s*=\s*"([^"]*)"/); 
+    if (begMatch) open = begMatch[1] || '(';
+    if (endMatch) close = endMatch[1] || ')';
+    const cleaned = inner.replace(/<m:dPr>[\s\S]*?<\/m:dPr>/g, '');
+    const text = extractRawTextFromOmml(cleaned) || cleaned.replace(/<[^>]*>/g, '').trim();
+    return `\\left${open}${text}\\right${close}`;
+  });
+  
+  // N-ary (integrals, sums)
+  s = s.replace(/<m:nary>([\s\S]*?)<\/m:nary>/g, (_m, inner: string) => {
+    let chr = '∫';
+    const chrMatch = inner.match(/<m:chr\s+m:val\s*=\s*"([^"]*)"/); 
+    if (chrMatch) chr = chrMatch[1];
+    const sub = (inner.match(/<m:sub>([\s\S]*?)<\/m:sub>/) || [])[1] || '';
+    const sup = (inner.match(/<m:sup>([\s\S]*?)<\/m:sup>/) || [])[1] || '';
+    const body = (inner.match(/<m:e>([\s\S]*?)<\/m:e>/) || [])[1] || '';
+    const subText = extractRawTextFromOmml(sub) || sub.replace(/<[^>]*>/g, '').trim();
+    const supText = extractRawTextFromOmml(sup) || sup.replace(/<[^>]*>/g, '').trim();
+    const bodyText = extractRawTextFromOmml(body) || body.replace(/<[^>]*>/g, '').trim();
+    const op = chr === '∑' ? '\\sum' : chr === '∏' ? '\\prod' : '\\int';
+    let result = op;
+    if (subText) result += `_{${subText}}`;
+    if (supText) result += `^{${supText}}`;
+    if (bodyText) result += ` ${bodyText}`;
+    return result;
+  });
+
+  // Function names (sin, cos, etc.)
+  s = s.replace(/<m:func>([\s\S]*?)<\/m:func>/g, (_m, inner: string) => {
+    const fname = (inner.match(/<m:fName>([\s\S]*?)<\/m:fName>/) || [])[1] || '';
+    const body = (inner.match(/<m:e>([\s\S]*?)<\/m:e>/) || [])[1] || '';
+    const fnText = extractRawTextFromOmml(fname) || fname.replace(/<[^>]*>/g, '').trim();
+    const bodyText = extractRawTextFromOmml(body) || body.replace(/<[^>]*>/g, '').trim();
+    return `\\${fnText}{${bodyText}}`;
+  });
+
+  // Limits
+  s = s.replace(/<m:limLow>([\s\S]*?)<\/m:limLow>/g, (_m, inner: string) => {
+    const base = (inner.match(/<m:e>([\s\S]*?)<\/m:e>/) || [])[1] || '';
+    const lim = (inner.match(/<m:lim>([\s\S]*?)<\/m:lim>/) || [])[1] || '';
+    const baseText = extractRawTextFromOmml(base) || base.replace(/<[^>]*>/g, '').trim();
+    const limText = extractRawTextFromOmml(lim) || lim.replace(/<[^>]*>/g, '').trim();
+    return `${baseText}_{${limText}}`;
+  });
+  
+  // Extract remaining text from all <m:t> elements and strip XML
+  const remaining = extractRawTextFromOmml(s);
+  if (remaining) return remaining;
+  
+  // Ultimate fallback: strip ALL XML tags
+  return s.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 }
 
 /**
  * Convert OMML XML fragment to LaTeX string.
  * Pipeline: OMML → MathML → LaTeX (via mathml-to-latex library)
- * Falls back to raw text extraction if conversion fails.
+ * Falls back to direct OMML→LaTeX conversion, then raw text extraction.
  */
 function ommlFragmentToLatex(ommlXml: string): string {
-  try {
-    const mathml = ommlNodeToMathml(ommlXml);
-
-    // Dynamic import would be ideal but we need sync here.
-    // mathml-to-latex exports { MathMLToLaTeX }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MathMLToLaTeX } = require('mathml-to-latex');
-    const latex = MathMLToLaTeX.convert(mathml);
-    const cleaned = latex.replace(/\s+/g, ' ').trim();
-    if (cleaned) return cleaned;
-  } catch (err) {
-    console.warn('[omml-to-latex] LaTeX conversion failed, trying raw text fallback:', err);
+  // Strategy 1: Full pipeline — OMML → MathML → LaTeX
+  if (MathMLToLaTeX) {
+    try {
+      const mathml = ommlNodeToMathml(ommlXml);
+      const latex = MathMLToLaTeX.convert(mathml);
+      const cleaned = latex.replace(/\s+/g, ' ').trim();
+      if (cleaned && cleaned.length > 0) {
+        return cleaned;
+      }
+    } catch (err) {
+      console.warn('[omml-to-latex] MathML pipeline failed:', (err as Error).message);
+    }
+  } else {
+    console.warn('[omml-to-latex] MathMLToLaTeX not available, using direct conversion');
   }
-  // Fallback: extract raw text from <m:t> elements so formula content is not lost
+
+  // Strategy 2: Direct OMML → LaTeX (simpler but handles common cases)
+  try {
+    const directLatex = ommlToLatexDirect(ommlXml);
+    if (directLatex && directLatex.length > 0) {
+      return directLatex;
+    }
+  } catch (err) {
+    console.warn('[omml-to-latex] Direct conversion failed:', (err as Error).message);
+  }
+
+  // Strategy 3: Raw text extraction from <m:t> elements
   const rawText = extractRawTextFromOmml(ommlXml);
   if (rawText) return rawText;
+
   return '\\text{[formula]}';
 }
 
