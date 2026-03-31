@@ -134,7 +134,8 @@ const MATH_PREPROCESSORS: Array<[RegExp, string]> = [
 
   // ── Unicode geometry ──────────────────────────────────────────
   [/△/g,"\\triangle"],[/▲/g,"\\triangle"],
-  [/□/g,"\\square"],[/■/g,"\\blacksquare"],
+  // Note: □ is NOT converted to \square - it's handled as a placeholder for missing formulas
+  [/■/g,"\\blacksquare"],
   [/⟂/g,"\\perp"],[/∥/g,"\\parallel"],
   [/∠/g,"\\angle"],[/⌢/g,"\\frown"],
   [/⊾/g,"\\measuredangle"],

@@ -4,6 +4,16 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "school-files";
 
+function isTrueFlag(value: string | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
+export function shouldForceLocalUploads(): boolean {
+  return isTrueFlag(process.env.FORCE_LOCAL_UPLOADS);
+}
+
 function randomId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -13,6 +23,7 @@ function sanitizePathPart(part: string): string {
 }
 
 export function hasSupabaseStorageConfig(): boolean {
+  if (shouldForceLocalUploads()) return false;
   return Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 }
 

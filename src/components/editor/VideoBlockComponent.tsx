@@ -88,8 +88,15 @@ const parseInteractions = (raw: VideoInteraction[] | string | undefined): VideoI
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const FORCE_LOCAL_UPLOADS = (() => {
+  const v = process.env.NEXT_PUBLIC_FORCE_LOCAL_UPLOADS;
+  if (!v) return false;
+  const normalized = v.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+})();
 
 async function uploadVideoDirectToSupabase(file: File): Promise<string | null> {
+  if (FORCE_LOCAL_UPLOADS) return null;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
 
   const signRes = await fetch("/api/storage/sign-upload", {

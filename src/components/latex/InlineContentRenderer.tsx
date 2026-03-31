@@ -38,8 +38,10 @@ export default function InlineContentRenderer({
     return `{{INLINE_IMG:${idx}}}`;
   });
 
-  // Some imported docs use square placeholders for missing formula glyphs.
-  // If inline images exist, map each square to the next inline image marker.
+  // Handle square placeholders (□) that appear when formula conversion fails
+  // These squares come from failed OMML-to-LaTeX conversion or missing formula data
+  
+  // If inline images exist, map each square to the next inline image marker
   if (inlineImages.length > 0 && normalizedContent.includes("□") && !normalizedContent.includes("{{INLINE_IMG:")) {
     let imgIdx = 0;
     normalizedContent = normalizedContent.replace(/□/g, () => {
@@ -47,6 +49,22 @@ export default function InlineContentRenderer({
       const marker = `{{INLINE_IMG:${imgIdx}}}`;
       imgIdx += 1;
       return marker;
+    });
+  }
+  
+  // If squares remain (no inline images or more squares than images), 
+  // replace with a more informative placeholder
+  if (normalizedContent.includes("□")) {
+    // Count consecutive squares and replace with numbered placeholders
+    let squareCount = 0;
+    normalizedContent = normalizedContent.replace(/□+/g, (match) => {
+      if (match.length === 1) {
+        squareCount++;
+        return `[CN${squareCount}]`;
+      }
+      // Multiple consecutive squares
+      squareCount++;
+      return `[CN${squareCount}]`;
     });
   }
 

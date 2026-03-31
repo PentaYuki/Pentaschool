@@ -334,12 +334,33 @@ export async function preprocessDocxMath(buffer: Buffer): Promise<Buffer> {
       }
       const formulaText = wtContents.join(' ').trim();
 
-      // Build LaTeX: use extracted text if available, otherwise show a placeholder square
-      const latexContent = formulaText.length > 0
-        ? `\\text{${formulaText.replace(/[{}\\]/g, '\\$&')}}`
-        : `\\square`;
+      // Build LaTeX: use extracted text if available, otherwise try to extract from nearby content
+      let latexContent = '';
+      
+      if (formulaText.length > 0) {
+        // Try to clean and use the extracted text
+        latexContent = formulaText
+          .replace(/[{}\\]/g, '\\$&')
+          .replace(/\s+/g, ' ')
+          .trim();
+      } else {
+        // If no text found, use a more informative placeholder that won't render as square
+        // Try to extract any numeric or letter content from the OLE object
+        const anyText = inner.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (anyText.length > 0 && anyText.length < 50) {
+          latexContent = `\\text{${anyText.replace(/[{}\\]/g, '\\$&')}}`;
+        } else {
+          // Use empty text marker instead of square - will be handled by renderer
+          latexContent = '';
+        }
+      }
 
-      return `<w:r><w:t xml:space="preserve"> [[LATEX:$${latexContent}$]] </w:t></w:r>`;
+      // Only create marker if we have content
+      if (latexContent) {
+        return `<w:r><w:t xml:space="preserve"> [[LATEX:$${latexContent}$]] </w:t></w:r>`;
+      }
+      // Return a space to avoid breaking the document flow
+      return `<w:r><w:t xml:space="preserve"> </w:t></w:r>`;
     });
 
     if (oleReplacedCount > 0) {
