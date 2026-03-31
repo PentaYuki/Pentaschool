@@ -41,6 +41,8 @@ $rng.GetBytes($bytes)
 # Expected: "status": "healthy"
 ```
 
+Note: Build trên Vercel hiện dùng `prisma db push` để tương thích PostgreSQL (Neon) trong giai đoạn chuyển từ SQLite.
+
 ---
 
 ## 📚 Full Documentation
