@@ -38,7 +38,7 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config, {isServer}) => {
+  webpack: (config: any, { isServer }: { isServer: boolean }) => {
     // Ensure CSS from node_modules is properly handled
     if (!isServer) {
       config.optimization.splitChunks.cacheGroups = {
