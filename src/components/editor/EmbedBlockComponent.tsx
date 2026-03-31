@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback } from "react";
 import { Code, Upload, Link, Trash2, ExternalLink, Loader2, X, Maximize2, Minimize2, Globe } from "lucide-react";
 import toast from "react-hot-toast";
+import JSZip from "jszip";
+import { createClient } from "@supabase/supabase-js";
 
 // ─── Platform Detection ─────────────────────────────────────
 const EMBED_PLATFORMS: { pattern: RegExp; label: string; icon: string; color: string }[] = [
@@ -26,6 +28,33 @@ const EMBED_PLATFORMS: { pattern: RegExp; label: string; icon: string; color: st
   { pattern: /tinkercad\.com/i, label: "Tinkercad", icon: "🔧", color: "bg-teal-100 text-teal-700" },
   { pattern: /codesandbox\.io/i, label: "CodeSandbox", icon: "📦", color: "bg-gray-100 text-gray-700" },
 ];
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+function sanitizeZipPath(name: string): string | null {
+  const normalized = name.replace(/\\/g, "/");
+  const parts = normalized.split("/").filter((p) => p && p !== "." && p !== ".." && !p.startsWith("~"));
+  if (parts.length === 0) return null;
+  return parts.join("/");
+}
+
+function contentTypeByName(fileName: string): string {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html";
+  if (lower.endsWith(".js")) return "text/javascript";
+  if (lower.endsWith(".css")) return "text/css";
+  if (lower.endsWith(".json")) return "application/json";
+  if (lower.endsWith(".svg")) return "image/svg+xml";
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".mp4")) return "video/mp4";
+  if (lower.endsWith(".woff2")) return "font/woff2";
+  if (lower.endsWith(".woff")) return "font/woff";
+  return "application/octet-stream";
+}
 
 function detectPlatform(url: string): { label: string; icon: string; color: string } | null {
   for (const p of EMBED_PLATFORMS) {
@@ -132,6 +161,87 @@ export default function EmbedBlockComponent({
     setUploadProgress(10);
 
     try {
+      // Preferred path for Vercel: unzip in browser and upload files directly to Supabase.
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        const loadingId = toast.loading("Đang xử lý file ZIP...");
+        const zipBytes = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(zipBytes);
+        const entries = Object.entries(zip.files).filter(([, z]) => !z.dir);
+
+        if (entries.length === 0) {
+          toast.dismiss(loadingId);
+          throw new Error("ZIP rỗng hoặc không có file hợp lệ");
+        }
+
+        const folderId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        let indexPath: string | null = null;
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        for (let i = 0; i < entries.length; i++) {
+          const [relativePath, zipEntry] = entries[i];
+          const safePath = sanitizeZipPath(relativePath);
+          if (!safePath) continue;
+
+          const lower = safePath.toLowerCase();
+          if (lower === "index.html" || lower.endsWith("/index.html")) {
+            if (!indexPath || safePath.split("/").length < indexPath.split("/").length) {
+              indexPath = safePath;
+            }
+          }
+
+          const signRes = await fetch("/api/storage/sign-upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: `interactive/${folderId}/${safePath}` }),
+          });
+          if (!signRes.ok) {
+            const e = await signRes.json().catch(() => ({}));
+            throw new Error(e?.error || "Không tạo được signed upload URL");
+          }
+
+          const signed = await signRes.json();
+          const blob = await zipEntry.async("blob");
+
+          const { error } = await supabase.storage
+            .from(signed.bucket)
+            .uploadToSignedUrl(signed.path, signed.token, blob, {
+              contentType: contentTypeByName(safePath),
+              upsert: false,
+            });
+
+          if (error) {
+            throw new Error(error.message || `Upload thất bại: ${safePath}`);
+          }
+
+          const pct = 20 + Math.round(((i + 1) / entries.length) * 75);
+          setUploadProgress(Math.min(98, pct));
+        }
+
+        if (!indexPath) {
+          toast.dismiss(loadingId);
+          throw new Error("ZIP phải chứa file index.html");
+        }
+
+        const finalRes = await fetch("/api/storage/sign-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: `interactive/${folderId}/${indexPath}` }),
+        });
+        if (!finalRes.ok) {
+          const e = await finalRes.json().catch(() => ({}));
+          toast.dismiss(loadingId);
+          throw new Error(e?.error || "Không lấy được URL public cho index.html");
+        }
+
+        const finalData = await finalRes.json();
+        setUploadProgress(100);
+        setEmbedUrl(finalData.publicUrl);
+        await onUpdate({ content: finalData.publicUrl });
+        toast.dismiss(loadingId);
+        toast.success("Tải ZIP lên Supabase thành công!");
+        return;
+      }
+
       const formData = new FormData();
       formData.append("file", file);
 

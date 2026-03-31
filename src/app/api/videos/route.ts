@@ -36,6 +36,15 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    if (process.env.VERCEL === "1" && !hasSupabaseStorageConfig()) {
+      return NextResponse.json(
+        {
+          error: "Vercel chua cau hinh SUPABASE_URL va SUPABASE_SERVICE_ROLE_KEY nen khong upload duoc video.",
+        },
+        { status: 500 }
+      );
+    }
+
     if (hasSupabaseStorageConfig()) {
       const storagePath = buildStoragePath("videos", file.name);
       const uploaded = await uploadBufferToStorage({
@@ -46,11 +55,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: uploaded.publicUrl }, { status: 200 });
     }
 
-    // Vercel cannot persist local files across invocations.
-    // Return data URL so the video URL can be stored with the block data.
+    // Local development fallback only.
     if (process.env.VERCEL === "1") {
-      const url = `data:${file.type};base64,${buffer.toString("base64")}`;
-      return NextResponse.json({ url }, { status: 200 });
+      return NextResponse.json(
+        { error: "Vercel mode requires Supabase storage." },
+        { status: 500 }
+      );
     }
 
     const uploadsDir = join(process.cwd(), "public", "videos");

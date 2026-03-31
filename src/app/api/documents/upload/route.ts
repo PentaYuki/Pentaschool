@@ -28,6 +28,13 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    if (process.env.VERCEL === '1' && !hasSupabaseStorageConfig()) {
+      return NextResponse.json(
+        { error: 'Vercel chua cau hinh SUPABASE_URL va SUPABASE_SERVICE_ROLE_KEY nen khong upload duoc file.' },
+        { status: 500 }
+      );
+    }
+
     if (hasSupabaseStorageConfig()) {
       const storagePath = buildStoragePath('documents', file.name);
       const uploaded = await uploadBufferToStorage({
@@ -44,16 +51,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Vercel cannot persist writes to /public at runtime.
-    // Return data URL so caller can store it in DB and serve directly.
+    // Local development fallback only.
     if (process.env.VERCEL === '1') {
-      const dataUrl = `data:${file.type || 'application/octet-stream'};base64,${buffer.toString('base64')}`;
-      return NextResponse.json({
-        url: dataUrl,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      });
+      return NextResponse.json(
+        { error: 'Vercel mode requires Supabase storage.' },
+        { status: 500 }
+      );
     }
 
     // Local development: write to disk

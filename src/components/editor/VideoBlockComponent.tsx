@@ -298,6 +298,7 @@ function VideoEditModal({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("video/")) { toast.error("Vui lòng chọn file video"); return; }
+    const loadingId = toast.loading("Đang upload video...");
     try {
       let url: string | null = null;
 
@@ -323,8 +324,10 @@ function VideoEditModal({
 
       setInputUrl(url); setInputMode("file");
       setUploadedFileName(file.name);
+      toast.dismiss(loadingId);
       toast.success("Upload thành công");
     } catch (err: any) {
+      toast.dismiss(loadingId);
       toast.error(err?.message || "Upload thất bại");
     }
   };

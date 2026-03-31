@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    if (process.env.VERCEL === '1' && !hasSupabaseStorageConfig()) {
+      return NextResponse.json(
+        { error: 'Vercel chua cau hinh SUPABASE_URL va SUPABASE_SERVICE_ROLE_KEY nen khong upload duoc anh.' },
+        { status: 500 }
+      );
+    }
+
     if (hasSupabaseStorageConfig()) {
       const storagePath = buildStoragePath('images', file.name);
       const uploaded = await uploadBufferToStorage({
@@ -54,17 +61,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vercel filesystem is ephemeral/read-only for persistent assets.
-    // Store image as data URL so it persists in DB references.
+    // Local development fallback only.
     if (process.env.VERCEL === '1') {
-      const dataUrl = `data:${file.type};base64,${buffer.toString('base64')}`;
       return NextResponse.json(
-        {
-          success: true,
-          url: dataUrl,
-          filename: file.name,
-        },
-        { status: 200 }
+        { error: 'Vercel mode requires Supabase storage.' },
+        { status: 500 }
       );
     }
 

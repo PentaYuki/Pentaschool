@@ -5,6 +5,13 @@ import {
   hasSupabaseStorageConfig,
 } from "@/lib/supabase-storage";
 
+function sanitizeStoragePath(inputPath: string): string {
+  const normalized = inputPath.replace(/\\/g, "/").trim();
+  const parts = normalized.split("/").filter((p) => p && p !== "." && p !== "..");
+  if (parts.length === 0) return "uploads/file.bin";
+  return parts.map((part) => part.replace(/[^a-zA-Z0-9._-]/g, "-")).join("/");
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!hasSupabaseStorageConfig()) {
@@ -15,10 +22,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    const explicitPath = typeof body?.path === "string" ? body.path : "";
     const folder = typeof body?.folder === "string" ? body.folder : "uploads";
     const fileName = typeof body?.fileName === "string" ? body.fileName : "file.bin";
 
-    const path = buildStoragePath(folder, fileName);
+    const path = explicitPath ? sanitizeStoragePath(explicitPath) : buildStoragePath(folder, fileName);
     const signed = await createSignedUploadForPath(path);
 
     return NextResponse.json({
