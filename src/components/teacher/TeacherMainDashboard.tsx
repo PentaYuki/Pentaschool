@@ -617,7 +617,13 @@ function TeacherLecturesView({ teacherId, onBack, onNewLecture, classes, activeC
     const fetchPages = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/pages?authorId=${teacherId}`);
+        const res = await fetch(`/api/pages?authorId=${teacherId}`, {
+          cache: 'no-store',
+          headers: {
+            'Pragma': 'no-cache',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+        });
         if (res.ok) {
           const data = await res.json();
           setPages(Array.isArray(data) ? data : data.pages || []);
@@ -1856,9 +1862,7 @@ export default function TeacherMainDashboard() {
               });
               if (res.ok) {
                 const newPage = await res.json();
-                // Chuyển về home rồi lại lectures để refresh danh sách
-                setView('home');
-                setTimeout(() => setView('lectures'), 50);
+                router.push(`/teacher/editor/${newPage.id}`);
               }
             } catch (err) {
               console.error('Error creating course:', err);

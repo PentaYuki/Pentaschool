@@ -130,7 +130,13 @@ export default function PageEditor({ authorId, readOnly = false, initialTitle, p
           url = `/api/pages/${courseId}`;
         }
         
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          cache: "no-store",
+          headers: {
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+        });
         if (!response.ok) throw new Error("Failed to fetch pages");
 
         const data = await response.json();
@@ -300,7 +306,13 @@ export default function PageEditor({ authorId, readOnly = false, initialTitle, p
       
       if (courseId && !parentId) {
         // Kiểm tra xem courseId có thuộc về authorId hiện tại không
-        const courseCheck = await fetch(`/api/pages/${courseId}`);
+        const courseCheck = await fetch(`/api/pages/${courseId}`, {
+          cache: "no-store",
+          headers: {
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+        });
         if (courseCheck.ok) {
           const courseData = await courseCheck.json();
           if (courseData.authorId === authorId) {
@@ -332,14 +344,26 @@ export default function PageEditor({ authorId, readOnly = false, initialTitle, p
       
       // Refetch pages based on courseId if present
       if (courseId) {
-        const courseResponse = await fetch(`/api/pages/${courseId}`);
+        const courseResponse = await fetch(`/api/pages/${courseId}`, {
+          cache: "no-store",
+          headers: {
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+        });
         if (courseResponse.ok) {
           const courseData = await courseResponse.json();
           setPages([courseData]);
         }
       } else {
         // Refetch all pages
-        const allPagesResponse = await fetch(`/api/pages?authorId=${authorId}`);
+        const allPagesResponse = await fetch(`/api/pages?authorId=${authorId}`, {
+          cache: "no-store",
+          headers: {
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+        });
         if (allPagesResponse.ok) {
           const updatedPages = await allPagesResponse.json();
           setPages(updatedPages);
