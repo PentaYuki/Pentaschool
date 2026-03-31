@@ -5,6 +5,7 @@
 import { writeFile, unlink, readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import os from 'os';
 import { execFile, exec } from 'child_process';
 import { promisify } from 'util';
 import { randomBytes } from 'crypto';
@@ -12,13 +13,18 @@ import { randomBytes } from 'crypto';
 const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
 
-const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'exam-images');
+const PERSISTENT_UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'exam-images');
+const TEMP_UPLOAD_DIR = join(os.tmpdir(), 'pentaschool-exam-images');
 
 /** Ensure the upload directory exists */
-async function ensureUploadDir(): Promise<void> {
-  if (!existsSync(UPLOAD_DIR)) {
-    await mkdir(UPLOAD_DIR, { recursive: true });
+async function ensureDir(dir: string): Promise<void> {
+  if (!existsSync(dir)) {
+    await mkdir(dir, { recursive: true });
   }
+}
+
+async function ensureUploadDir(): Promise<void> {
+  await ensureDir(TEMP_UPLOAD_DIR);
 }
 
 /**
@@ -55,8 +61,8 @@ async function convertWmfWithLibreOffice(
 ): Promise<string | null> {
   await ensureUploadDir();
   const id = randomBytes(8).toString('hex');
-  const tmpWmf = join(UPLOAD_DIR, `tmp_${id}.wmf`);
-  const tmpPng = join(UPLOAD_DIR, `tmp_${id}.png`);
+  const tmpWmf = join(TEMP_UPLOAD_DIR, `tmp_${id}.wmf`);
+  const tmpPng = join(TEMP_UPLOAD_DIR, `tmp_${id}.png`);
 
   try {
     // Extract base64 data (strip data URI prefix)
@@ -67,7 +73,7 @@ async function convertWmfWithLibreOffice(
     await execFileAsync(libreOfficePath, [
       '--headless',
       '--convert-to', 'png',
-      '--outdir', UPLOAD_DIR,
+      '--outdir', TEMP_UPLOAD_DIR,
       tmpWmf,
     ], { timeout: 15000 });
 
@@ -93,10 +99,10 @@ async function convertWmfWithLibreOffice(
  * Returns a URL path relative to /public
  */
 async function saveWmfForLater(wmfBase64: string): Promise<string> {
-  await ensureUploadDir();
+  await ensureDir(PERSISTENT_UPLOAD_DIR);
   const id = randomBytes(8).toString('hex');
   const filename = `wmf_${id}.wmf`;
-  const filepath = join(UPLOAD_DIR, filename);
+  const filepath = join(PERSISTENT_UPLOAD_DIR, filename);
 
   const base64Data = wmfBase64.replace(/^data:image\/[^;]+;base64,/, '');
   await writeFile(filepath, Buffer.from(base64Data, 'base64'));
@@ -114,8 +120,8 @@ async function convertWmfWithGdiPlus(wmfBase64: string): Promise<string | null> 
 
   await ensureUploadDir();
   const id = randomBytes(8).toString('hex');
-  const tmpWmf = join(UPLOAD_DIR, `tmp_${id}.wmf`);
-  const tmpPng = join(UPLOAD_DIR, `tmp_${id}.png`);
+  const tmpWmf = join(TEMP_UPLOAD_DIR, `tmp_${id}.wmf`);
+  const tmpPng = join(TEMP_UPLOAD_DIR, `tmp_${id}.png`);
 
   try {
     const base64Data = wmfBase64.replace(/^data:image\/[^;]+;base64,/, '');
@@ -182,8 +188,8 @@ export async function batchConvertWmfImages(
   // Write all WMF files to disk
   const entries: { index: number; wmfPath: string; pngPath: string }[] = [];
   for (const item of wmfImages) {
-    const wmfPath = join(UPLOAD_DIR, `batch_${batchId}_${item.index}.wmf`);
-    const pngPath = join(UPLOAD_DIR, `batch_${batchId}_${item.index}.png`);
+    const wmfPath = join(TEMP_UPLOAD_DIR, `batch_${batchId}_${item.index}.wmf`);
+    const pngPath = join(TEMP_UPLOAD_DIR, `batch_${batchId}_${item.index}.png`);
     const base64Data = item.base64.replace(/^data:image\/[^;]+;base64,/, '');
     await writeFile(wmfPath, Buffer.from(base64Data, 'base64'));
     entries.push({ index: item.index, wmfPath, pngPath });
@@ -212,7 +218,7 @@ try {
     }).join('\n');
 
     const psScript = `Add-Type -AssemblyName System.Drawing\n${conversions}`;
-    const scriptPath = join(UPLOAD_DIR, `batch_${batchId}.ps1`);
+    const scriptPath = join(TEMP_UPLOAD_DIR, `batch_${batchId}.ps1`);
     await writeFile(scriptPath, psScript);
 
     await execAsync(
@@ -296,7 +302,12 @@ export async function convertWmfImage(
   }
 
   // Save original WMF for later manual conversion
-  const wmfPath = await saveWmfForLater(wmfBase64);
+  let wmfPath: string | undefined;
+  try {
+    wmfPath = await saveWmfForLater(wmfBase64);
+  } catch (err) {
+    console.warn('[wmf-converter] Unable to persist original WMF file, continuing with in-memory fallback:', err);
+  }
 
   // Try LibreOffice conversion
   if (libreOfficeCache) {

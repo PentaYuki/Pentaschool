@@ -490,10 +490,8 @@ export async function POST(request: NextRequest) {
             // Try individual conversion as fallback
             try {
               const result = await convertWmfImage(entry.base64, entry.index);
-              if (result.converted) {
-                imageMap.set(entry.index, result.displaySrc);
-                convertedCount++;
-              }
+              imageMap.set(entry.index, result.displaySrc);
+              if (result.converted) convertedCount++;
             } catch { /* keep original */ }
           }
         }

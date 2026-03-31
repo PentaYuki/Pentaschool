@@ -549,9 +549,7 @@ export async function POST(request: NextRequest) {
           } else {
             try {
               const result = await convertWmfImage(entry.base64, entry.index);
-              if (result.converted) {
-                imageMap.set(entry.index, result.displaySrc);
-              }
+              imageMap.set(entry.index, result.displaySrc);
             } catch { /* keep original */ }
           }
         }
