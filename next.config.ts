@@ -25,7 +25,34 @@ const nextConfig = {
       "./*.docx",
       "./test_upload.docx"
     ]
-  }
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
+    ],
+  },
+  webpack: (config, {isServer}) => {
+    // Ensure CSS from node_modules is properly handled
+    if (!isServer) {
+      config.optimization.splitChunks.cacheGroups = {
+        ...config.optimization.splitChunks.cacheGroups,
+        katex: {
+          test: /[\\/]node_modules[\\/]katex[\\/]/,
+          name: 'katex',
+          priority: 10,
+          reuseExistingChunk: true,
+        },
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

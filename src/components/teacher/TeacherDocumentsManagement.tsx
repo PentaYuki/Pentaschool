@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LogOut, Upload, Trash2, Filter } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { clearAuthUser } from '@/lib/auth-storage';
 import { IDocument } from '@/types';
 import DocumentList from '@/components/cards/DocumentList';
 
@@ -61,7 +62,7 @@ export default function TeacherDocumentsPage() {
   }, [selectedType]);
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
+    clearAuthUser();
     router.push('/auth/login');
   };
 

@@ -1,3 +1,6 @@
+/* KaTeX CSS — must import globally to ensure math rendering on production */
+@import "katex/dist/katex.min.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

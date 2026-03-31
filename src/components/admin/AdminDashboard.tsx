@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { clearAuthUser } from '@/lib/auth-storage';
 
 interface StatCard { label: string; value: string | number; delta?: string; color: string; icon: React.ReactNode }
 interface User { id: string; name: string; email: string; role: string; isActive: boolean; createdAt: string; className?: string; schoolName?: string }
@@ -133,8 +134,7 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    sessionStorage.removeItem('user');
+    clearAuthUser();
     router.push('/auth/login');
   };
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { clearAuthUser } from '@/lib/auth-storage';
 import CodeGenerationPanel from '@/components/admin/CodeGenerationPanel';
 
 export default function TeacherCodesPage() {
@@ -32,7 +33,7 @@ export default function TeacherCodesPage() {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
+    clearAuthUser();
     router.push('/auth/login');
   };
 

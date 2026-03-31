@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, Loader } from 'lucide-react';
 import { loginUser } from '@/services/userService';
+import { saveAuthUser } from '@/lib/auth-storage';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -23,8 +24,8 @@ export default function LoginForm() {
     try {
       const response = await loginUser({ email, password });
       
-      // Store user info in localStorage
-      localStorage.setItem('user', JSON.stringify(response.user));
+      // Store user info with cookies + localStorage using new persistent auth system
+      saveAuthUser(response.user);
       
       // Redirect based on role — use replace() so login isn't in browser history
       if (response.user.role === 'ADMIN') {

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { clearAuthUser } from '@/lib/auth-storage';
 import ExamCreator, { type ClassInfo } from './Examcreator';
 import TestManagementModule from './TestManagementModule';
 
@@ -1428,7 +1429,7 @@ export default function TeacherMainDashboard() {
     setEditClassId(null);
   };
   const handleLogout = () => {
-    localStorage.removeItem('user'); sessionStorage.removeItem('user');
+    clearAuthUser();
     router.push('/auth/login');
   };
 
