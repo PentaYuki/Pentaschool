@@ -90,7 +90,7 @@ export default function StudentExamsPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 px-4 py-6 max-w-2xl mx-auto">
       {/* Back button */}
       <button
-        onClick={() => router.back()}
+        onClick={() => router.push('/student')}
         className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 mb-4 flex items-center gap-1"
       >
         ← Quay lại

@@ -609,14 +609,16 @@ export default function PublicPageRenderer({
           router.push('/student/pages');
         } else if (user.role === 'TEACHER') {
           router.push('/teacher');
+        } else if (user.role === 'ADMIN') {
+          router.push('/admin');
         } else {
-          router.back();
+          router.push('/');
         }
       } catch {
-        router.back();
+        router.push('/');
       }
     } else {
-      router.back();
+      router.push('/');
     }
   };
 

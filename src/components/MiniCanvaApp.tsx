@@ -555,11 +555,27 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
       // this is what makes quiz/slides appear immediately after saving.
       setTimeout(() => {
         savedToast.remove();
-        const onNavComplete = () => {
-          router.refresh(); // bust the cache so updated slidesData is visible
-        };
-        window.addEventListener('popstate', onNavComplete, { once: true });
-        router.back();
+        const auth = getAuthUser();
+        const hasSafeReferrer =
+          typeof document !== 'undefined' &&
+          document.referrer.startsWith(window.location.origin) &&
+          !document.referrer.includes('/auth/login');
+
+        // Prefer history back only when referrer is same-origin and not the login page.
+        if (window.history.length > 1 && hasSafeReferrer) {
+          const onNavComplete = () => {
+            router.refresh(); // bust the cache so updated slidesData is visible
+          };
+          window.addEventListener('popstate', onNavComplete, { once: true });
+          router.back();
+          return;
+        }
+
+        if (auth?.role === 'TEACHER' || auth?.role === 'ADMIN') {
+          router.replace('/teacher');
+          return;
+        }
+        router.replace('/');
       }, 1500);
     } catch (error) {
       console.error('Error saving canvas:', error);
