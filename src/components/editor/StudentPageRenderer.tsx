@@ -481,7 +481,7 @@ function QuizAccordion({
       </button>
       {isOpen && (
         <div className="p-6 bg-white">
-          <QuizViewer quiz={quiz} readOnly={false} />
+          <QuizViewer quiz={quiz} readOnly={false} allowRetry={false} />
         </div>
       )}
     </div>

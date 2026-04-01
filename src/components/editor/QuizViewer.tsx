@@ -24,6 +24,7 @@ interface QuizViewerProps {
   quiz: Quiz;
   readOnly?: boolean;
   isTeacher?: boolean;
+  allowRetry?: boolean;
   isOverlay?: boolean;
   overlayOpacity?: number;
   /** Called when student submits — passes whether ALL gradable questions were correct */
@@ -72,7 +73,7 @@ function TypeBadge({ type, glass }: { type: QuizType; glass?: boolean }) {
 }
 
 export default function QuizViewer({
-  quiz, readOnly = true, isTeacher = false, isOverlay = false, overlayOpacity = 75, onSubmitted, onReset,
+  quiz, readOnly = true, isTeacher = false, allowRetry = true, isOverlay = false, overlayOpacity = 75, onSubmitted, onReset,
 }: QuizViewerProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
   const [essayAnswers, setEssayAnswers] = useState<Record<string, string>>({});
@@ -237,6 +238,8 @@ export default function QuizViewer({
               {type === "ESSAY" && (
                 <div className="space-y-3">
                   <textarea
+                    id={`essay-${quiz.id}-${question.id}`}
+                    name={`essay-${question.id}`}
                     value={essayAnswers[question.id] || ""}
                     onChange={(e) => { if (readOnly || showResults) return; setEssayAnswers((p) => ({ ...p, [question.id]: e.target.value })); }}
                     disabled={readOnly || showResults}
@@ -353,7 +356,7 @@ export default function QuizViewer({
                 <span className="ml-2 text-xs opacity-75">({totalAnswered}/{quiz.questions.length} đã trả lời)</span>
               )}
             </button>
-          ) : (
+          ) : allowRetry ? (
             <button
               onClick={handleReset}
               className={`flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition ${
@@ -362,6 +365,10 @@ export default function QuizViewer({
             >
               <RotateCcw className="w-4 h-4" /> Làm lại
             </button>
+          ) : (
+            <div className={`px-4 py-3 rounded-xl text-sm font-medium ${isOverlay ? "bg-white/10 text-white" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
+              Bài kiểm tra đã nộp. Bạn không thể làm lại trong chế độ bài giảng.
+            </div>
           )}
         </div>
       )}

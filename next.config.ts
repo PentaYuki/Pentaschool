@@ -46,6 +46,35 @@ const nextConfig = {
       },
     ],
   },
+  async headers() {
+    const isDev = process.env.NODE_ENV === 'development';
+    const scriptSrc = isDev
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:;"
+      : "script-src 'self' 'unsafe-inline' https: http:;";
+
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self' https: http: data: blob:;",
+              scriptSrc,
+              "style-src 'self' 'unsafe-inline' https:;",
+              "img-src 'self' data: blob: https: http:;",
+              "font-src 'self' data: https:;",
+              "connect-src 'self' https: http: wss: ws:;",
+              "frame-src 'self' https: http: data: blob:;",
+              "object-src 'none';",
+              "base-uri 'self';",
+              "frame-ancestors 'self';",
+            ].join(' '),
+          },
+        ],
+      },
+    ];
+  },
   webpack: (config: any, { isServer }: { isServer: boolean }) => {
     // Ensure CSS from node_modules is properly handled
     if (!isServer) {

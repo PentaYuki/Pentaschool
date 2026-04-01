@@ -199,6 +199,8 @@ export default function StudentLecturesViewer() {
                 <div className="relative max-w-md">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
+                    id="student-lecture-search"
+                    name="lectureSearch"
                     type="text"
                     placeholder="Tìm kiếm bài giảng..."
                     value={searchQuery}
