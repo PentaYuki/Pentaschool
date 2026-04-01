@@ -319,7 +319,7 @@ export default function InteractiveLessonCreator({
   return (
     <div className="space-y-3">
       {/* Hidden file input */}
-      <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+      <input ref={imageInputRef} id="lesson-image-upload" name="lessonImage" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
 
       {/* Header / Toolbar */}
       <div className="flex items-center justify-between">

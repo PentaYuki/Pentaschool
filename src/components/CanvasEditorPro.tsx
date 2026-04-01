@@ -2765,7 +2765,7 @@ export const CanvasEditorPro = forwardRef<
             <label className="flex items-center gap-1 cursor-pointer px-1.5 py-1 rounded hover:bg-gray-100 transition" title="Gắn âm thanh khi đối tượng xuất hiện">
               <VolumeX size={14} className="text-gray-400" />
               <span className="text-[10px] text-gray-500">Âm thanh</span>
-              <input type="file" accept="audio/*" onChange={handleSetObjectSound} className="hidden" />
+              <input id="object-sound-upload" name="objectSound" type="file" accept="audio/*" onChange={handleSetObjectSound} className="hidden" />
             </label>
           )}
         </div>
@@ -2849,7 +2849,7 @@ export const CanvasEditorPro = forwardRef<
             <label className="flex items-center gap-1 cursor-pointer px-1.5 py-1 rounded hover:bg-gray-100 transition" title="Gắn âm thanh khi đối tượng xuất hiện">
               <VolumeX size={14} className="text-gray-400" />
               <span className="text-[10px] text-gray-500">Âm thanh</span>
-              <input ref={objectSoundInputRef} type="file" accept="audio/*" onChange={handleSetObjectSound} className="hidden" />
+              <input ref={objectSoundInputRef} id="object-sound-upload-ref" name="objectSoundRef" type="file" accept="audio/*" onChange={handleSetObjectSound} className="hidden" />
             </label>
           )}
         </div>

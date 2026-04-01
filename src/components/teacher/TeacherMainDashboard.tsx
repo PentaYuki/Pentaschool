@@ -77,7 +77,7 @@ function ClassModal({ onSave, onClose, initialName }: {
             <X style={{ width: 16, height: 16, color: 'rgba(255,255,255,.4)' }} />
           </button>
         </div>
-        <input autoFocus
+        <input autoFocus id="class-name" name="className"
           style={{ display: 'block', width: '100%', padding: '16px 0', borderRadius: 14, fontSize: 28, fontWeight: 800, letterSpacing: '0.18em', fontFamily: 'monospace', background: hasValue ? 'rgba(24,95,165,.25)' : 'rgba(255,255,255,.06)', color: '#FFFFFF', border: `2px solid ${hasValue ? '#60C8FF' : 'rgba(255,255,255,.15)'}`, outline: 'none', textAlign: 'center', boxSizing: 'border-box' }}
           placeholder="10A1" value={name}
           onChange={e => setName(e.target.value.toUpperCase())}
@@ -431,7 +431,7 @@ function TeacherLibraryView({ teacherId, onBack }: { teacherId: string; onBack: 
             <div style={{ fontSize: 16, fontWeight: 700, color: '#E2EAF4', marginBottom: 16 }}>Tải lên tài liệu</div>
 
             <label style={{ display: 'block', padding: '24px 16px', borderRadius: 10, border: '2px dashed rgba(96,200,255,.3)', textAlign: 'center', cursor: 'pointer', marginBottom: 12, background: selectedFile ? 'rgba(96,200,255,.07)' : 'transparent' }}>
-              <input type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp" style={{ display: 'none' }} onChange={handleFileSelect} />
+              <input id="library-file" name="libraryFile" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp" style={{ display: 'none' }} onChange={handleFileSelect} />
               {selectedFile ? (
                 <div><div style={{ fontSize: 24 }}>{typeIcon(selectedFile.type)}</div><div style={{ fontSize: 12, color: '#60C8FF', marginTop: 4 }}>{selectedFile.name}</div></div>
               ) : (
@@ -439,10 +439,10 @@ function TeacherLibraryView({ teacherId, onBack }: { teacherId: string; onBack: 
               )}
             </label>
 
-            <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)}
+            <input id="library-upload-title" name="uploadTitle" value={uploadTitle} onChange={e => setUploadTitle(e.target.value)}
               placeholder="Tên tài liệu *"
               style={{ display: 'block', width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.05)', color: '#E2EAF4', fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
-            <input value={uploadDesc} onChange={e => setUploadDesc(e.target.value)}
+            <input id="library-upload-desc" name="uploadDesc" value={uploadDesc} onChange={e => setUploadDesc(e.target.value)}
               placeholder="Mô tả (tùy chọn)"
               style={{ display: 'block', width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.05)', color: '#E2EAF4', fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 16 }} />
 
@@ -479,7 +479,7 @@ function TeacherLibraryView({ teacherId, onBack }: { teacherId: string; onBack: 
               ))}
             </div>
             <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,.07)', display: 'flex', gap: 8 }}>
-              <input value={commentText} onChange={e => setCommentText(e.target.value)}
+              <input id="library-comment" name="commentText" value={commentText} onChange={e => setCommentText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && submitComment()}
                 placeholder="Viết nhận xét..."
                 style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.06)', color: '#E2EAF4', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />

@@ -656,7 +656,7 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
                 <Upload style={{ width: 36, height: 36, color: BLUE, margin: '0 auto 12px', display: 'block' }} />
                 <p style={{ fontSize: 15, fontWeight: 600, color: '#60C8FF', margin: '0 0 6px' }}>Kéo thả file vào đây hoặc bấm để chọn</p>
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', margin: 0 }}>Hỗ trợ: <strong>.docx</strong> (mẫu demo) · <strong>.txt</strong> (parse câu hỏi thật)</p>
-                <input ref={fileRef} type="file" accept=".docx,.doc,.txt" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleParseFromFile(f); }} />
+                <input ref={fileRef} id="exam-import-file" name="examImportFile" type="file" accept=".docx,.doc,.txt" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleParseFromFile(f); }} />
               </div>
               {parseError && (
                 <div style={{ marginBottom: 10 }}>
@@ -700,7 +700,7 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
               </div>
 
               {/* Question text */}
-              <textarea value={qForm.text} onChange={e => setQForm(f => ({ ...f, text: e.target.value }))} placeholder="Nhập nội dung câu hỏi..." rows={3} style={{ ...inp, resize: 'vertical', marginBottom: 8 }} />
+              <textarea id="builder-q-text" name="questionText" value={qForm.text} onChange={e => setQForm(f => ({ ...f, text: e.target.value }))} placeholder="Nhập nội dung câu hỏi..." rows={3} style={{ ...inp, resize: 'vertical', marginBottom: 8 }} />
 
               {/* MCQ options */}
               {qForm.type === 'mcq' && (
@@ -708,7 +708,7 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
                   {qForm.opts.map((o, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,.4)', width: 16 }}>{String.fromCharCode(65 + i)}.</span>
-                      <input value={o} onChange={e => { const n = [...qForm.opts]; n[i] = e.target.value; setQForm(f => ({ ...f, opts: n })); }} placeholder={`Đáp án ${String.fromCharCode(65 + i)}`} style={{ ...inp, padding: '6px 10px', fontSize: 12 }} />
+                      <input id={`builder-opt-${i}`} name={`opt_${i}`} value={o} onChange={e => { const n = [...qForm.opts]; n[i] = e.target.value; setQForm(f => ({ ...f, opts: n })); }} placeholder={`Đáp án ${String.fromCharCode(65 + i)}`} style={{ ...inp, padding: '6px 10px', fontSize: 12 }} />
                     </div>
                   ))}
                 </div>
@@ -723,7 +723,7 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
                 {qForm.type === 'tf' && ['Đúng', 'Sai'].map(l => (
                   <button key={l} onClick={() => setQForm(f => ({ ...f, answer: l }))} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, border: 'none', cursor: 'pointer', background: qForm.answer === l ? BLUE : 'rgba(255,255,255,.1)', color: qForm.answer === l ? 'white' : 'rgba(255,255,255,.5)' }}>{l}</button>
                 ))}
-                {qForm.type === 'essay' && <input value={qForm.essay} onChange={e => setQForm(f => ({ ...f, essay: e.target.value }))} placeholder="Từ khóa / đáp án gợi ý (tùy chọn)" style={{ ...inp, flex: 1, padding: '5px 10px', fontSize: 12 }} />}
+                {qForm.type === 'essay' && <input id="builder-essay-answer" name="essayAnswer" value={qForm.essay} onChange={e => setQForm(f => ({ ...f, essay: e.target.value }))} placeholder="Từ khóa / đáp án gợi ý (tùy chọn)" style={{ ...inp, flex: 1, padding: '5px 10px', fontSize: 12 }} />}
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 12, color: 'rgba(255,255,255,.4)' }}>Điểm:</span>
                   {[0.25, 0.5, 1, 1.5, 2].map(p => (
@@ -863,11 +863,11 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
                   )}
                   {editingQ?.id === q.id && (
                     <div style={{ marginLeft: 28, marginBottom: 8, padding: 10, borderRadius: 8, border: '1px solid rgba(96,200,255,.25)', background: 'rgba(24,95,165,.12)' }}>
-                      <textarea value={editingQ.text} onChange={e => setEditingQ(p => p ? { ...p, text: e.target.value } : p)} rows={3} style={{ ...inp, resize: 'vertical', marginBottom: 6 }} />
+                      <textarea id="edit-q-text" name="editQuestionText" value={editingQ.text} onChange={e => setEditingQ(p => p ? { ...p, text: e.target.value } : p)} rows={3} style={{ ...inp, resize: 'vertical', marginBottom: 6 }} />
                       {editingQ.type === 'mcq' && (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
                           {[0, 1, 2, 3].map(i => (
-                            <input key={i} value={editingQ.options[i] || ''} onChange={e => setEditingQ(p => { if (!p) return p; const opts = [...p.options]; opts[i] = e.target.value; return { ...p, options: opts }; })} placeholder={`Đáp án ${String.fromCharCode(65 + i)}`} style={{ ...inp, padding: '6px 10px', fontSize: 12 }} />
+                            <input key={i} id={`edit-opt-${i}`} name={`editOpt_${i}`} value={editingQ.options[i] || ''} onChange={e => setEditingQ(p => { if (!p) return p; const opts = [...p.options]; opts[i] = e.target.value; return { ...p, options: opts }; })} placeholder={`Đáp án ${String.fromCharCode(65 + i)}`} style={{ ...inp, padding: '6px 10px', fontSize: 12 }} />
                           ))}
                         </div>
                       )}
@@ -908,8 +908,8 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
                         {editingQ.type === 'mcq' && ['A', 'B', 'C', 'D'].map(l => <button key={l} onClick={() => setEditingQ(p => p ? { ...p, answer: l } : p)} style={{ padding: '4px 9px', borderRadius: 6, fontSize: 12, border: 'none', background: editingQ.answer === l ? BLUE : 'rgba(255,255,255,.1)', color: editingQ.answer === l ? 'white' : 'rgba(255,255,255,.55)', cursor: 'pointer' }}>{l}</button>)}
                         {editingQ.type === 'tf' && ['Đúng', 'Sai'].map(l => <button key={l} onClick={() => setEditingQ(p => p ? { ...p, answer: l } : p)} style={{ padding: '4px 9px', borderRadius: 6, fontSize: 12, border: 'none', background: editingQ.answer === l ? BLUE : 'rgba(255,255,255,.1)', color: editingQ.answer === l ? 'white' : 'rgba(255,255,255,.55)', cursor: 'pointer' }}>{l}</button>)}
                         {editingQ.type === 'tf4' && <span style={{ fontSize: 11, color: 'rgba(255,255,255,.7)' }}>{buildTF4AnswerText(editingQ.subItems) || 'Chưa chọn đáp án'}</span>}
-                        {editingQ.type === 'essay' && <input value={editingQ.answer || ''} onChange={e => setEditingQ(p => p ? { ...p, answer: e.target.value } : p)} placeholder="Từ khóa gợi ý" style={{ ...inp, padding: '6px 10px', fontSize: 12, flex: 1 }} />}
-                        <input type="number" min={0.25} step={0.25} value={editingQ.points} onChange={e => setEditingQ(p => p ? { ...p, points: Number(e.target.value) || p.points } : p)} style={{ ...inp, width: 76, padding: '6px 8px', fontSize: 12, textAlign: 'center' }} />
+                        {editingQ.type === 'essay' && <input id="edit-essay-answer" name="editEssayAnswer" value={editingQ.answer || ''} onChange={e => setEditingQ(p => p ? { ...p, answer: e.target.value } : p)} placeholder="Từ khóa gợi ý" style={{ ...inp, padding: '6px 10px', fontSize: 12, flex: 1 }} />}
+                        <input id="edit-q-points" name="questionPoints" type="number" min={0.25} step={0.25} value={editingQ.points} onChange={e => setEditingQ(p => p ? { ...p, points: Number(e.target.value) || p.points } : p)} style={{ ...inp, width: 76, padding: '6px 8px', fontSize: 12, textAlign: 'center' }} />
                         <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>điểm</span>
                         <button onClick={saveEditQuestion} style={{ marginLeft: 'auto', padding: '5px 10px', borderRadius: 6, fontSize: 11, background: '#0A3D2E', color: '#7EFFB2', border: '1px solid rgba(74,222,128,.3)', cursor: 'pointer' }}>Lưu</button>
                         <button onClick={() => setEditingQ(null)} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 11, background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.6)', border: '1px solid rgba(255,255,255,.15)', cursor: 'pointer' }}>Hủy</button>
@@ -926,7 +926,7 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
                     <div style={{ display: 'flex', gap: 6, marginTop: 8, marginLeft: 28 }}>
                       {q.type === 'mcq' && ['A', 'B', 'C', 'D'].map(l => <button key={l} className="ans-btn" onClick={() => setManualAnswers(p => ({ ...p, [q.id]: l }))} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, border: 'none', cursor: 'pointer', background: manualAnswers[q.id] === l ? '#185FA5' : 'rgba(255,255,255,.1)', color: manualAnswers[q.id] === l ? 'white' : 'rgba(255,255,255,.5)', fontWeight: 700 }}>{l}</button>)}
                       {q.type === 'tf' && ['Đúng', 'Sai'].map(l => <button key={l} className="ans-btn" onClick={() => setManualAnswers(p => ({ ...p, [q.id]: l }))} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, border: 'none', cursor: 'pointer', background: manualAnswers[q.id] === l ? '#185FA5' : 'rgba(255,255,255,.1)', color: manualAnswers[q.id] === l ? 'white' : 'rgba(255,255,255,.5)' }}>{l}</button>)}
-                      {q.type === 'essay' && <input style={{ ...inp, flex: 1, background: 'rgba(255,255,255,.08)', borderColor: 'rgba(255,255,255,.2)' }} placeholder="Nhập từ khóa / đáp án gợi ý..." value={manualAnswers[q.id] || ''} onChange={e => setManualAnswers(p => ({ ...p, [q.id]: e.target.value }))} />}
+                      {q.type === 'essay' && <input id={`manual-answer-${q.id}`} name={`manualAnswer_${q.id}`} style={{ ...inp, flex: 1, background: 'rgba(255,255,255,.08)', borderColor: 'rgba(255,255,255,.2)' }} placeholder="Nhập từ khóa / đáp án gợi ý..." value={manualAnswers[q.id] || ''} onChange={e => setManualAnswers(p => ({ ...p, [q.id]: e.target.value }))} />}
                     </div>
                   )}
                 </div>
@@ -943,7 +943,7 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
           <StepBlock title="Chủ đề & loại kiểm tra" done={s0done}>
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: BLUE, display: 'block', marginBottom: 5 }}>Chương / Chủ đề</label>
-              <input style={inpBlue} placeholder="vd: Chương 3, Ôn tập HK1..." value={cfg.chapter} onChange={e => setF('chapter', e.target.value)} />
+              <input id="exam-chapter" name="chapter" style={inpBlue} placeholder="vd: Chương 3, Ôn tập HK1..." value={cfg.chapter} onChange={e => setF('chapter', e.target.value)} />
               <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,.45)' }}>Môn học lấy theo tài khoản giáo viên, không cần chọn lại ở bước này.</div>
             </div>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.5)', display: 'block', marginBottom: 6 }}>Loại kiểm tra</label>
@@ -982,7 +982,7 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
             <StepBlock title="Thời gian & hạn nộp" done={s2done}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                 <div><label style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.5)', display: 'block', marginBottom: 6 }}>Thời gian (phút)</label><div style={{ display: 'flex', gap: 5 }}>{[30, 45, 60, 90].map(m => <button key={m} onClick={() => setF('duration', m)} style={{ ...pill(cfg.duration === m), flex: 1, padding: '7px 0' }}>{m}</button>)}</div></div>
-                <div><label style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.5)', display: 'block', marginBottom: 6 }}>Hạn nộp (ngày)</label><div style={{ display: 'flex', gap: 5 }}>{[1, 3, 7, 14].map(d => <button key={d} onClick={() => setF('deadlineDays', d)} style={{ ...pill(cfg.deadlineDays === d), flex: 1, padding: '7px 0' }}>{d}</button>)}<input type="number" min={1} max={90} placeholder="…" onChange={e => { const v = parseInt(e.target.value); if (v > 0) setF('deadlineDays', v); }} style={{ ...inp, width: 48, textAlign: 'center', padding: '7px 4px' }} /></div></div>
+                <div><label style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.5)', display: 'block', marginBottom: 6 }}>Hạn nộp (ngày)</label><div style={{ display: 'flex', gap: 5 }}>{[1, 3, 7, 14].map(d => <button key={d} onClick={() => setF('deadlineDays', d)} style={{ ...pill(cfg.deadlineDays === d), flex: 1, padding: '7px 0' }}>{d}</button>)}<input id="deadline-days-custom" name="deadlineDaysCustom" type="number" min={1} max={90} placeholder="…" onChange={e => { const v = parseInt(e.target.value); if (v > 0) setF('deadlineDays', v); }} style={{ ...inp, width: 48, textAlign: 'center', padding: '7px 4px' }} /></div></div>
               </div>
               {cfg.deadlineDays > 0 && <div style={{ fontSize: 12, color: BLUE, background: 'rgba(24,95,165,.2)', padding: '8px 12px', borderRadius: 8 }}>Hạn nộp: <strong>{deadlineDate} lúc 23:59</strong></div>}
             </StepBlock>
@@ -992,7 +992,7 @@ export default function ExamCreator({ activeClass, onBack, defaultSubject }: { a
             <StepBlock title="Số mã đề" done={s3done}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12 }}>
                 {[1, 2, 3, 4, 6, 8].map(n => <button key={n} onClick={() => setF('variantCount', n)} style={{ ...pill(cfg.variantCount === n), width: 44 }}>{n}</button>)}
-                <input type="number" min={1} max={50} placeholder="khác" onChange={e => { const v = parseInt(e.target.value); if (v > 0) setF('variantCount', v); }} style={{ ...inp, width: 60, textAlign: 'center' }} />
+                <input id="variant-count-custom" name="variantCountCustom" type="number" min={1} max={50} placeholder="khác" onChange={e => { const v = parseInt(e.target.value); if (v > 0) setF('variantCount', v); }} style={{ ...inp, width: 60, textAlign: 'center' }} />
                 <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', whiteSpace: 'nowrap' }}>mã đề</span>
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,.1)', opacity: 0.4, pointerEvents: 'none' }}>

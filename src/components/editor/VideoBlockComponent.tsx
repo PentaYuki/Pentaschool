@@ -403,20 +403,20 @@ function VideoEditModal({
           ))}
         </div>
         {inputMode === "url" ? (
-          <input type="text" placeholder="Dán link YouTube, Vimeo hoặc .mp4..."
+          <input type="text" id="video-url-input" name="videoUrl" placeholder="Dán link YouTube, Vimeo hoặc .mp4..."
             value={inputUrl} onChange={(e) => setInputUrl(e.target.value)}
             className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-400 bg-white" />
         ) : (
           <label className={`flex items-center justify-center gap-3 px-4 py-4 border-2 border-dashed rounded-xl cursor-pointer bg-white ${uploadedFileName ? 'border-green-300 bg-green-50/70' : 'border-indigo-200 hover:bg-indigo-50'}`}>
             <UploadIcon className="w-5 h-5 text-indigo-400" />
             <span className="text-sm font-medium text-slate-600">{inputUrl ? "✓ Đã tải video thành công — click để đổi" : "Chọn file video"}</span>
-            <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileUpload} className="hidden" />
+            <input ref={fileInputRef} id="video-file-upload" name="videoFile" type="file" accept="video/*" onChange={handleFileUpload} className="hidden" />
           </label>
         )}
         {uploadedFileName && (
           <p className="text-xs text-green-700 font-medium">Đã tải lên: {uploadedFileName}</p>
         )}
-        <input type="text" placeholder="URL thumbnail (tùy chọn)"
+        <input type="text" id="video-poster-url" name="posterUrl" placeholder="URL thumbnail (tùy chọn)"
           value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)}
           className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-400 bg-white" />
       </div>
@@ -672,7 +672,7 @@ function InteractionFormPanel({
             <div className="space-y-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input type="text" placeholder="Tìm quiz..." value={quizSearch}
+                <input type="text" id="quiz-picker-search" name="quizSearch" placeholder="Tìm quiz..." value={quizSearch}
                   onChange={(e) => setQuizSearch(e.target.value)}
                   className="w-full pl-9 pr-3 py-2.5 border-2 border-slate-200 bg-white rounded-xl text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-400" />
               </div>
@@ -763,7 +763,7 @@ function InteractionFormPanel({
         {/* ── Hint ── */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Gợi ý khi sai (tùy chọn)</label>
-          <input type="text" placeholder="VD: Xem lại đoạn 1:00–2:00"
+          <input type="text" id="stop-hint" name="hint" placeholder="VD: Xem lại đoạn 1:00\u20132:00"
             value={hint} onChange={(e) => setHint(e.target.value)}
             className="w-full px-4 py-2.5 border-2 border-slate-200 bg-white rounded-xl text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-400" />
         </div>
@@ -845,7 +845,7 @@ function InlineQuizCreator({ blockId, onCreated, onCancel }: { blockId: string; 
 
   return (
     <div className="p-4 space-y-3 bg-white">
-      <input type="text" value={title} onChange={e => setTitle(e.target.value)}
+      <input type="text" id="inline-quiz-title" name="quizTitle" value={title} onChange={e => setTitle(e.target.value)}
         placeholder="Tên quiz..."
         className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-semibold text-gray-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-400" />
 
@@ -873,7 +873,7 @@ function InlineQuizCreator({ blockId, onCreated, onCancel }: { blockId: string; 
             <div key={qi} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg flex items-center justify-center flex-shrink-0">{qi + 1}</span>
-                <input type="text" value={q.questionText} onChange={e => updateQText(qi, e.target.value)}
+                <input type="text" id={`iq-q-${qi}`} name={`questionText_${qi}`} value={q.questionText} onChange={e => updateQText(qi, e.target.value)}
                   placeholder="Nội dung câu hỏi..."
                   className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium text-gray-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-400 bg-white" />
                 <button type="button" onClick={() => setQuestions(p => p.filter((_, i) => i !== qi))}
@@ -892,7 +892,7 @@ function InlineQuizCreator({ blockId, onCreated, onCancel }: { blockId: string; 
                       {q.questionType === "TRUE_FALSE" ? (
                         <span className="text-sm font-medium text-gray-900">{opt.optionText}</span>
                       ) : (
-                        <input type="text" value={opt.optionText} onChange={e => updateOpt(qi, oi, "optionText", e.target.value)}
+                        <input type="text" id={`iq-opt-${qi}-${oi}`} name={`optionText_${qi}_${oi}`} value={opt.optionText} onChange={e => updateOpt(qi, oi, "optionText", e.target.value)}
                           placeholder={`Đáp án ${OPTION_LETTERS[oi] ?? oi + 1}...`}
                           className="flex-1 text-sm font-medium text-gray-900 placeholder:text-slate-400 bg-transparent focus:outline-none" />
                       )}

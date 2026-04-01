@@ -343,7 +343,7 @@ export default function QuestionBankPage() {
           {/* Search */}
           <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
             <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: S.muted }} />
-            <input value={searchText} onChange={e => setSearchText(e.target.value)}
+            <input id="question-bank-search" name="questionSearch" value={searchText} onChange={e => setSearchText(e.target.value)}
               placeholder="Tìm kiếm câu hỏi..."
               style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: 10, background: S.card, border: `1px solid ${S.border}`, color: S.text, fontSize: 13, outline: 'none' }} />
           </div>
@@ -430,19 +430,19 @@ export default function QuestionBankPage() {
 
             {/* Form */}
             {[
-              { label: 'Tiêu đề đề thi *', val: examTitle, set: setExamTitle, ph: 'Vd: Kiểm tra Toán Ch.1–3' },
-              { label: 'Môn học', val: examSubject, set: setExamSubject, ph: 'Toán, Vật lý, Hóa học...' },
+              { label: 'Tiêu đề đề thi *', val: examTitle, set: setExamTitle, ph: 'Vd: Kiểm tra Toán Ch.1\u20133', id: 'exam-title', nm: 'examTitle' },
+              { label: 'Môn học', val: examSubject, set: setExamSubject, ph: 'Toán, Vật lý, Hóa học...', id: 'exam-subject', nm: 'examSubject' },
             ].map(f => (
               <div key={f.label} style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: S.blue, marginBottom: 6, letterSpacing: '0.06em' }}>{f.label}</label>
-                <input value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                <input id={f.id} name={f.nm} value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,.06)', border: `1px solid ${S.border}`, color: S.text, fontSize: 13, outline: 'none' }} />
               </div>
             ))}
 
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: S.blue, marginBottom: 6, letterSpacing: '0.06em' }}>Thời gian làm bài (phút)</label>
-              <input type="number" min={10} max={180} value={examDuration} onChange={e => setExamDuration(Number(e.target.value))}
+              <input id="exam-duration" name="examDuration" type="number" min={10} max={180} value={examDuration} onChange={e => setExamDuration(Number(e.target.value))}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,.06)', border: `1px solid ${S.border}`, color: S.text, fontSize: 13, outline: 'none' }} />
             </div>
 

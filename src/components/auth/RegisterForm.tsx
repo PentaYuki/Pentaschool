@@ -235,18 +235,18 @@ export default function RegisterForm() {
           </FadeField>
 
           <FadeField label="Họ và tên" required delay={80} visible={vis}>
-            <input className="ps-inp" style={inp} placeholder="Nguyễn Văn A"
+            <input className="ps-inp" id="reg-name" name="name" style={inp} placeholder="Nguyễn Văn A"
               value={form.name} onChange={e => set("name", e.target.value)} autoFocus />
           </FadeField>
 
           <FadeField label="Email" required delay={130} visible={vis}>
-            <input className="ps-inp" style={inp} type="email" placeholder="example@email.com"
+            <input className="ps-inp" id="reg-email" name="email" style={inp} type="email" placeholder="example@email.com"
               value={form.email} onChange={e => set("email", e.target.value)} />
           </FadeField>
 
           <FadeField label="Mật khẩu" required delay={180} visible={vis}
             hint="Ít nhất 6 ký tự">
-            <input className="ps-inp" style={inp} type="password" placeholder="••••••••"
+            <input className="ps-inp" id="reg-password" name="password" style={inp} type="password" placeholder="••••••••"
               value={form.password} onChange={e => set("password", e.target.value)} />
           </FadeField>
 
@@ -260,7 +260,7 @@ export default function RegisterForm() {
                 ? "Mã bí mật cấu hình trên Vercel để tạo admin đầu tiên"
                 : "Mã do admin cung cấp — liên hệ quản trị viên nếu chưa có"}
             >
-              <input className="ps-inp"
+              <input className="ps-inp" id="reg-activation-code" name="activationCode"
                 style={{ ...inp, fontFamily: "monospace", letterSpacing: "0.12em", fontWeight: 700, fontSize: 16 }}
                 placeholder={form.role === "ADMIN" ? "VD: ADMIN-BOOTSTRAP-2026" : "VD: ACTIVE-2026-XXXX"}
                 value={form.activationCode}
@@ -273,7 +273,7 @@ export default function RegisterForm() {
         {step === 2 && !isAdminRole && (<>
           <FadeField label="Trường học" required visible={vis}>
             <div style={{ position: "relative" }}>
-              <input className="ps-inp" style={inp}
+              <input className="ps-inp" id="reg-school" name="schoolName" style={inp}
                 placeholder="Tìm tên trường..."
                 value={schoolQuery}
                 onChange={e => { setSchoolQuery(e.target.value); set("schoolName", e.target.value); }}
@@ -342,7 +342,7 @@ export default function RegisterForm() {
           {form.role === "STUDENT" && (
             <FadeField label="Lớp học" required delay={130} visible={vis}
               hint="Ví dụ: 10A1, 11B2, 12C3 — giáo viên dùng tên lớp này để giao đề thi">
-              <input className="ps-inp"
+              <input className="ps-inp" id="reg-class-name" name="className"
                 style={{ ...inp, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, fontSize: 18 }}
                 placeholder="10A1"
                 value={form.className}
