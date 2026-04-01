@@ -14,11 +14,18 @@ const hideSchema = z.object({
   hash: z.string().min(1),
 });
 
+function canUseCanvaImageLibrary(role: string): boolean {
+  return role === "TEACHER" || role === "ADMIN";
+}
+
 export async function GET(request: NextRequest) {
   try {
     const authUser = await getApiAuthUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!canUseCanvaImageLibrary(authUser.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const images = await prisma.canvaImageAsset.findMany({
@@ -50,6 +57,9 @@ export async function POST(request: NextRequest) {
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!canUseCanvaImageLibrary(authUser.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await request.json();
     const parsed = upsertSchema.safeParse(body);
@@ -59,6 +69,21 @@ export async function POST(request: NextRequest) {
 
     const { blockId, url, hash, source } = parsed.data;
     const isVisible = source !== "paste";
+
+    if (blockId) {
+      const block = await prisma.pageBlock.findUnique({
+        where: { id: blockId },
+        select: { page: { select: { authorId: true } } },
+      });
+
+      if (!block) {
+        return NextResponse.json({ error: "Block not found" }, { status: 404 });
+      }
+
+      if (authUser.role !== "ADMIN" && block.page.authorId !== authUser.id) {
+        return NextResponse.json({ error: "Forbidden block access" }, { status: 403 });
+      }
+    }
 
     const asset = await prisma.canvaImageAsset.upsert({
       where: {
@@ -114,6 +139,9 @@ export async function DELETE(request: NextRequest) {
     const authUser = await getApiAuthUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!canUseCanvaImageLibrary(authUser.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
