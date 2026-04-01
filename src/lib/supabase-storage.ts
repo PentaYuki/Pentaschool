@@ -72,37 +72,74 @@ export async function uploadBufferToStorage(params: {
     throw new Error(`Supabase upload failed: ${error.message}`);
   }
 
-  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(params.path);
+  // Handle getPublicUrl safely
+  let publicUrl = '';
+  try {
+    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(params.path);
+    publicUrl = data?.publicUrl || '';
+  } catch (err) {
+    console.warn(`[supabase-storage] getPublicUrl failed for path: ${params.path}`, err);
+  }
 
   return {
     bucket: STORAGE_BUCKET,
     path: params.path,
-    publicUrl: data.publicUrl,
+    publicUrl,
   };
 }
 
-export async function createSignedUploadForPath(path: string) {
+export async function createSignedUploadForPath(
+  path: string,
+  options?: { upsert?: boolean }
+) {
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUploadUrl(path);
+  let data: any;
+  let error: any;
+
+  // Prefer upsert=true to make retries idempotent for client-side upload flows.
+  try {
+    const result = await (supabase.storage.from(STORAGE_BUCKET) as any).createSignedUploadUrl(path, {
+      upsert: options?.upsert ?? true,
+    });
+    data = result?.data;
+    error = result?.error;
+  } catch {
+    const result = await (supabase.storage.from(STORAGE_BUCKET) as any).createSignedUploadUrl(path);
+    data = result?.data;
+    error = result?.error;
+  }
 
   if (error || !data?.token) {
     throw new Error(`Failed to create signed upload URL: ${error?.message || "Unknown error"}`);
   }
 
-  const { data: publicData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+  // Handle getPublicUrl safely - it can fail if bucket doesn't exist
+  let publicUrl = '';
+  try {
+    const { data: publicData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+    publicUrl = publicData?.publicUrl || '';
+  } catch (err) {
+    console.warn(`[supabase-storage] getPublicUrl failed for path: ${path}`, err);
+    // Continue without public URL - signed upload will still work
+  }
 
   return {
     path,
     token: data.token,
-    publicUrl: publicData.publicUrl,
+    publicUrl,
     bucket: STORAGE_BUCKET,
   };
 }
 
 export function getStoragePublicUrl(path: string): string {
-  const supabase = getSupabaseAdmin();
-  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+    return data?.publicUrl || '';
+  } catch (err) {
+    console.warn(`[supabase-storage] getPublicUrl failed for path: ${path}`, err);
+    return '';
+  }
 }
 
 export function guessContentTypeByFilename(fileName: string): string {

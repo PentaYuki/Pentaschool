@@ -45,3 +45,6 @@ public/uploads/*
 public/videos/*
 public/interactive/*
 tmp/
+
+.vercel
+.env*.local

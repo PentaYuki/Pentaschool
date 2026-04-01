@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import { generateAccessToken, generateRefreshToken } from '@/lib/jwt';
+import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,21 +50,69 @@ export async function POST(request: NextRequest) {
     // Update lastLoginAt
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
+    // Generate tokens
+    const accessToken = generateAccessToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    const refreshToken = generateRefreshToken({ userId: user.id });
+
+    // Store refresh token hash in DB with expiry (7 days)
+    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    let refreshStored = true;
+    try {
+      await prisma.refreshToken.create({
+        data: {
+          token: tokenHash,
+          userId: user.id,
+          expiresAt,
+        },
+      });
+    } catch (refreshError) {
+      refreshStored = false;
+      console.error('Refresh token persistence failed:', refreshError);
+    }
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
-    // Create response with user data and redirect hint
+    // Create response with user data and tokens
     const response = NextResponse.json(
       {
         success: true,
         message: 'Đăng nhập thành công',
         user: userWithoutPassword,
+        accessToken,
         redirectTo: user.role === 'TEACHER' ? '/teacher/documents' : '/student/library',
       },
       { status: 200 }
     );
 
-    // Set authentication cookie
+    // Set refresh token in httpOnly cookie (secure)
+    if (refreshStored) {
+      response.cookies.set('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: '/',
+      });
+    }
+
+    // Set access token in cookie so browser API calls are authenticated by proxy
+    response.cookies.set('access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 15, // 15 minutes
+      path: '/',
+    });
+
+    // Set user info in regular cookie (for frontend convenience)
     response.cookies.set('user', JSON.stringify(userWithoutPassword), {
       httpOnly: false,
       maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -72,8 +122,13 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Login error:', error);
+    const detail = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: 'Lỗi đăng nhập' },
+      {
+        success: false,
+        error: 'Lỗi đăng nhập',
+        ...(process.env.NODE_ENV !== 'production' ? { detail } : {}),
+      },
       { status: 500 }
     );
   }

@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: [
+    'bullmq',
+    'ioredis',
+    'jsonwebtoken',
+    'bcryptjs',
+    '@node-rs/bcrypt',
+  ],
   allowedDevOrigins: [
     "100.115.158.11",
     "localhost",
@@ -42,6 +49,17 @@ const nextConfig = {
   webpack: (config: any, { isServer }: { isServer: boolean }) => {
     // Ensure CSS from node_modules is properly handled
     if (!isServer) {
+      // In some webpack modes splitChunks can be disabled (boolean false)
+      if (!config.optimization) {
+        config.optimization = {};
+      }
+      if (!config.optimization.splitChunks || config.optimization.splitChunks === false) {
+        config.optimization.splitChunks = { cacheGroups: {} };
+      }
+      if (!config.optimization.splitChunks.cacheGroups) {
+        config.optimization.splitChunks.cacheGroups = {};
+      }
+
       config.optimization.splitChunks.cacheGroups = {
         ...config.optimization.splitChunks.cacheGroups,
         katex: {

@@ -25,9 +25,10 @@ export async function POST(request: NextRequest) {
     const explicitPath = typeof body?.path === "string" ? body.path : "";
     const folder = typeof body?.folder === "string" ? body.folder : "uploads";
     const fileName = typeof body?.fileName === "string" ? body.fileName : "file.bin";
+    const upsert = typeof body?.upsert === "boolean" ? body.upsert : true;
 
     const path = explicitPath ? sanitizeStoragePath(explicitPath) : buildStoragePath(folder, fileName);
-    const signed = await createSignedUploadForPath(path);
+    const signed = await createSignedUploadForPath(path, { upsert });
 
     return NextResponse.json({
       path: signed.path,

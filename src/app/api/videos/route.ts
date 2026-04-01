@@ -64,12 +64,23 @@ export async function POST(request: NextRequest) {
 
     if (hasSupabaseStorageConfig()) {
       const storagePath = buildStoragePath("videos", file.name);
-      const uploaded = await uploadBufferToStorage({
-        path: storagePath,
-        buffer,
-        contentType: file.type,
-      });
-      return NextResponse.json({ url: uploaded.publicUrl }, { status: 200 });
+      try {
+        const uploaded = await uploadBufferToStorage({
+          path: storagePath,
+          buffer,
+          contentType: file.type,
+        });
+        return NextResponse.json({ url: uploaded.publicUrl }, { status: 200 });
+      } catch (uploadErr) {
+        const message = uploadErr instanceof Error ? uploadErr.message : "Upload failed";
+        if (/maximum allowed size|too large|payload too large/i.test(message)) {
+          return NextResponse.json(
+            { error: "Video vượt quá giới hạn dung lượng của Storage bucket", details: message },
+            { status: 413 }
+          );
+        }
+        throw uploadErr;
+      }
     }
 
     // Local development fallback only.
