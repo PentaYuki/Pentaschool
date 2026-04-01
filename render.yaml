@@ -1,0 +1,18 @@
+services:
+  - type: worker
+    name: pentaschool-docx-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile.worker
+    plan: starter
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: INTERNAL_API_BASE_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JOB_NOTIFY_WEBHOOK_URL
+        sync: false
