@@ -15,6 +15,7 @@ import { createPasteHandler } from '@/lib/canvas-paste-handler';
 import {
   Type,
   Image as ImageIcon,
+  Sigma,
   Trash2,
   Download,
   Palette,
@@ -907,6 +908,24 @@ export const CanvasEditorPro = forwardRef<
         renderOnAddRemove: false, // Disable auto-render during loading
       });
 
+      const applyReadOnlyRestrictions = () => {
+        if (!readOnly) return;
+        canvas.selection = false;
+        canvas.forEachObject((obj: any) => {
+          obj.selectable = false;
+          obj.hasControls = false;
+          obj.hasBorders = false;
+          obj.lockMovementX = true;
+          obj.lockMovementY = true;
+          obj.lockScalingX = true;
+          obj.lockScalingY = true;
+          obj.lockRotation = true;
+          obj.editable = false;
+          // Keep evented=true only for objects that have hyperlinks
+          obj.evented = !!obj.hyperlink;
+        });
+      };
+
       // Add error handling for canvas context loss - CRITICAL FIX
       // Wrap both renderAll and clear methods to prevent null context errors
       const originalRenderAll = canvas.renderAll.bind(canvas);
@@ -1018,6 +1037,9 @@ export const CanvasEditorPro = forwardRef<
               canvas.backgroundColor = slide.backgroundColor;
               setBackgroundColor(slide.backgroundColor);
             }
+
+            // IMPORTANT: lock objects after async JSON load in readOnly mode
+            applyReadOnlyRestrictions();
             
             // Ensure all images are fully loaded before rendering
             let imageCount = 0;
@@ -1216,12 +1238,7 @@ export const CanvasEditorPro = forwardRef<
       });
     } else {
       // Read-only mode: disable all interactions except hyperlinks
-      canvas.selection = false;
-      canvas.forEachObject((obj: any) => {
-        obj.selectable = false;
-        // Keep evented=true for objects that have hyperlinks
-        obj.evented = !!obj.hyperlink;
-      });
+      applyReadOnlyRestrictions();
 
       // Handle hyperlink clicks in readOnly mode
       canvas.on('mouse:up', (e: any) => {
@@ -1426,6 +1443,29 @@ export const CanvasEditorPro = forwardRef<
       fill: '#000000',
       splitByGrapheme: true,
       fontFamily: 'Arial',
+    });
+
+    fabricCanvasRef.current.add(textbox);
+    fabricCanvasRef.current.setActiveObject(textbox);
+    fabricCanvasRef.current.renderAll();
+  };
+
+  // Add LaTeX math textbox (displayed by overlay system)
+  const handleAddMathFormula = () => {
+    if (!fabricCanvasRef.current || !fabric || readOnly) return;
+
+    const input = window.prompt('Nhap cong thuc LaTeX (vi du: \\frac{a}{b} hoac x^2 + y^2 = r^2)', '\\frac{a}{b}');
+    if (!input || !input.trim()) return;
+
+    const formulaText = `$$${input.trim()}$$`;
+    const textbox = new fabric.Textbox(formulaText, {
+      left: 120,
+      top: 120,
+      width: 360,
+      fontSize: 28,
+      fill: '#111827',
+      fontFamily: 'Arial',
+      splitByGrapheme: true,
     });
 
     fabricCanvasRef.current.add(textbox);
@@ -2474,6 +2514,14 @@ export const CanvasEditorPro = forwardRef<
           title="Thêm văn bản (T)"
         >
           <Type size={18} />
+        </button>
+
+        <button
+          onClick={handleAddMathFormula}
+          className="flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+          title="Thêm công thức Toán (LaTeX)"
+        >
+          <Sigma size={18} />
         </button>
 
         <label className="flex items-center justify-center w-10 h-10 bg-green-600 text-white rounded hover:bg-green-700 transition cursor-pointer">

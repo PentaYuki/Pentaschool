@@ -11,7 +11,14 @@ export async function GET(req: NextRequest) {
   const classId = req.nextUrl.searchParams.get('classId');
   if (!teacherId) return NextResponse.json({ error: 'teacherId required' }, { status: 400 });
 
-  const classFilter = classId ? { classId } : {};
+  const classFilter = classId
+    ? {
+        OR: [
+          { classId },
+          { classId: null },
+        ],
+      }
+    : {};
 
   try {
     // Yêu cầu pending
