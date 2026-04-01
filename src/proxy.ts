@@ -5,14 +5,6 @@ import { jwtVerify } from 'jose';
 const protectedRoutes = [
   '/api/teacher/',
   '/api/admin/',
-  '/api/pages',
-  '/api/exams',
-  '/api/quiz',
-  '/api/exam-banks',
-  '/api/documents',
-  '/api/upload',
-  '/api/comments',
-  '/api/library',
   '/api/jobs',
 ];
 
