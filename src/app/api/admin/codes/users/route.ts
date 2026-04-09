@@ -92,14 +92,14 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Không có quyền' }, { status: 403 });
     }
 
-    const { id, isActive, role } = await request.json();
+    const { id, isActive, role: nextRole } = await request.json();
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
     const updated = await prisma.user.update({
       where: { id },
       data: {
         ...(typeof isActive === 'boolean' ? { isActive } : {}),
-        ...(role ? { role } : {}),
+        ...(nextRole ? { role: nextRole } : {}),
       },
       select: { id: true, name: true, role: true, isActive: true },
     });
