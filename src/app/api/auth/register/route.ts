@@ -4,7 +4,7 @@
 // 2. Tạo bản ghi StudentTeacher khi học sinh nhập teacherCode
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       schoolId, schoolName, level,
       subjects, teacherCode, activationCode,
     } = body;
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
     const normalizedRole = typeof role === 'string'
       ? (role.trim().toUpperCase() as 'TEACHER' | 'STUDENT' | 'ADMIN' | '')
       : '';
@@ -36,6 +37,10 @@ export async function POST(req: NextRequest) {
 
     if (!['TEACHER', 'STUDENT', 'ADMIN'].includes(normalizedRole)) {
       return NextResponse.json({ success:false, error:'Vai trò không hợp lệ' }, { status: 400 });
+    }
+
+    if (!normalizedEmail || !name?.trim() || !password) {
+      return NextResponse.json({ success:false, error:'Thiếu thông tin bắt buộc' }, { status: 400 });
     }
 
     const userRole = normalizedRole as 'TEACHER' | 'STUDENT' | 'ADMIN';
@@ -78,8 +83,10 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Kiểm tra email trùng ──
-    const exists = await prisma.user.findUnique({ where: { email } });
-    if (exists) return NextResponse.json({ success:false, error:'Email đã được sử dụng' });
+    const exists = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (exists) {
+      return NextResponse.json({ success:false, error:'Email đã được sử dụng. Nếu vừa đăng ký, hãy đăng nhập.' }, { status: 409 });
+    }
 
     // ── Xử lý school ──
     let resolvedSchoolId = schoolId || null;
@@ -109,7 +116,7 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.create({
       data: {
         name:        name.trim(),
-        email:       email.toLowerCase().trim(),
+        email:       normalizedEmail,
         password:    hashed,
         role:        userRole,
         isActive:    userRole !== 'STUDENT',
@@ -141,9 +148,17 @@ export async function POST(req: NextRequest) {
     // Sau khi đăng nhập, học sinh sẽ nhập mã qua nút "+Kết nối giáo viên" trên dashboard.
 
     return NextResponse.json({ success: true, userId: user.id, teacherCode: newTeacherCode });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return NextResponse.json(
+        { success:false, error:'Email đã được sử dụng. Nếu vừa đăng ký, hãy đăng nhập.' },
+        { status: 409 }
+      );
+    }
+
     console.error('[POST /api/auth/register]', err);
-    return NextResponse.json({ success:false, error: err.message || 'Lỗi server' }, { status: 500 });
+    const detail = err instanceof Error ? err.message : 'Lỗi server';
+    return NextResponse.json({ success:false, error: detail }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }

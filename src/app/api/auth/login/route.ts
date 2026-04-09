@@ -8,9 +8,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password } = body;
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
     // Validation
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return NextResponse.json(
         { success: false, error: 'Email và mật khẩu là bắt buộc' },
         { status: 400 }
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     // Find user
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
