@@ -4,6 +4,30 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+function getRequestRole(request: NextRequest): string | null {
+  const roleFromHeader = request.headers.get('x-user-role');
+  if (roleFromHeader) {
+    return roleFromHeader;
+  }
+
+  const userCookie = request.cookies.get('user');
+  if (!userCookie) {
+    return null;
+  }
+
+  try {
+    const user = JSON.parse(decodeURIComponent(userCookie.value));
+    return typeof user?.role === 'string' ? user.role : null;
+  } catch {
+    try {
+      const user = JSON.parse(userCookie.value);
+      return typeof user?.role === 'string' ? user.role : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 /**
  * GET /api/admin/users
  * Trả về toàn bộ danh sách tài khoản cho AdminDashboard.
@@ -11,6 +35,14 @@ const prisma = new PrismaClient();
  */
 export async function GET(request: NextRequest) {
   try {
+    const role = getRequestRole(request);
+    if (!role) {
+      return NextResponse.json({ error: 'Chưa xác thực' }, { status: 401 });
+    }
+    if (role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Không có quyền' }, { status: 403 });
+    }
+
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -52,6 +84,14 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
+    const role = getRequestRole(request);
+    if (!role) {
+      return NextResponse.json({ error: 'Chưa xác thực' }, { status: 401 });
+    }
+    if (role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Không có quyền' }, { status: 403 });
+    }
+
     const { id, isActive, role } = await request.json();
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 

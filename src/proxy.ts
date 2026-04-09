@@ -20,6 +20,46 @@ const publicRoutes = [
 // Full Redis rate limiting is handled inside each API route
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
+function parseLegacyUserCookie(request: NextRequest): { id?: string; role?: string; email?: string } | null {
+  const rawUserCookie = request.cookies.get('user')?.value;
+  if (!rawUserCookie) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(decodeURIComponent(rawUserCookie));
+  } catch {
+    try {
+      return JSON.parse(rawUserCookie);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function getLegacyAuthorizationHeaders(pathname: string, request: NextRequest): Headers | null {
+  const legacyUser = parseLegacyUserCookie(request);
+  if (!legacyUser?.role) {
+    return null;
+  }
+
+  const isCodesRoute = pathname.startsWith('/api/admin/codes');
+  const isUsersRoute = pathname.startsWith('/api/admin/users');
+
+  const allowedForCodes = isCodesRoute && (legacyUser.role === 'ADMIN' || legacyUser.role === 'TEACHER');
+  const allowedForUsers = isUsersRoute && legacyUser.role === 'ADMIN';
+
+  if (!allowedForCodes && !allowedForUsers) {
+    return null;
+  }
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-user-id', String(legacyUser.id ?? ''));
+  requestHeaders.set('x-user-role', String(legacyUser.role ?? ''));
+  requestHeaders.set('x-user-email', String(legacyUser.email ?? ''));
+  return requestHeaders;
+}
+
 function inMemoryRateLimit(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
   const entry = rateLimitStore.get(key);
@@ -87,6 +127,13 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!token) {
+    const legacyHeaders = getLegacyAuthorizationHeaders(pathname, request);
+    if (legacyHeaders) {
+      return NextResponse.next({
+        request: { headers: legacyHeaders },
+      });
+    }
+
     return NextResponse.json(
       { success: false, error: 'Unauthorized: No token provided' },
       { status: 401 }
@@ -120,6 +167,13 @@ export async function proxy(request: NextRequest) {
       request: { headers: requestHeaders },
     });
   } catch {
+    const legacyHeaders = getLegacyAuthorizationHeaders(pathname, request);
+    if (legacyHeaders) {
+      return NextResponse.next({
+        request: { headers: legacyHeaders },
+      });
+    }
+
     return NextResponse.json(
       { success: false, error: 'Unauthorized: Invalid or expired token' },
       { status: 401 }
