@@ -1,6 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+function getRequestRole(request: NextRequest): string | null {
+  const roleFromHeader = request.headers.get('x-user-role');
+  if (roleFromHeader) {
+    return roleFromHeader;
+  }
+
+  const userCookie = request.cookies.get('user');
+  if (!userCookie) {
+    return null;
+  }
+
+  try {
+    const user = JSON.parse(decodeURIComponent(userCookie.value));
+    return typeof user?.role === 'string' ? user.role : null;
+  } catch {
+    try {
+      const user = JSON.parse(userCookie.value);
+      return typeof user?.role === 'string' ? user.role : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 // Generate a random alphanumeric code
 function generateActivationCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -13,17 +37,16 @@ function generateActivationCode(): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if user is authenticated and is ADMIN (in real app, use proper session/JWT)
-    const userCookie = request.cookies.get('user');
-    if (!userCookie) {
+    // Prefer auth context from proxy headers, fallback to legacy user cookie.
+    const role = getRequestRole(request);
+    if (!role) {
       return NextResponse.json(
         { success: false, error: 'Chưa xác thực' },
         { status: 401 }
       );
     }
 
-    const user = JSON.parse(userCookie.value);
-    if (user.role !== 'ADMIN' && user.role !== 'TEACHER') {
+    if (role !== 'ADMIN' && role !== 'TEACHER') {
       return NextResponse.json(
         { success: false, error: 'Không có quyền' },
         { status: 403 }
@@ -73,17 +96,16 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if user is authenticated and is ADMIN
-    const userCookie = request.cookies.get('user');
-    if (!userCookie) {
+    // Prefer auth context from proxy headers, fallback to legacy user cookie.
+    const role = getRequestRole(request);
+    if (!role) {
       return NextResponse.json(
         { success: false, error: 'Chưa xác thực' },
         { status: 401 }
       );
     }
 
-    const user = JSON.parse(userCookie.value);
-    if (user.role !== 'ADMIN' && user.role !== 'TEACHER') {
+    if (role !== 'ADMIN' && role !== 'TEACHER') {
       return NextResponse.json(
         { success: false, error: 'Không có quyền' },
         { status: 403 }

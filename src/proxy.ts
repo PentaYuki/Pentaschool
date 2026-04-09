@@ -95,7 +95,7 @@ export async function proxy(request: NextRequest) {
 
   try {
     const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET ?? 'fallback-secret-change-in-production'
+      process.env.JWT_SECRET ?? 'dev-secret-change-in-production'
     );
 
     const { payload } = await jwtVerify(token, secret, {
