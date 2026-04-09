@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Copy, Check, Loader, AlertCircle, RefreshCw, Sparkles, Lock, Calendar, CheckCircle } from 'lucide-react';
+import { fetchWithAuthRetry } from '@/lib/fetchWithAuthRetry';
 
 interface ActivationCode {
   id: string;
@@ -29,7 +30,7 @@ export default function CodeGenerationPanel() {
   const fetchCodes = async () => {
     setIsLoadingCodes(true);
     try {
-      const response = await fetch('/api/admin/codes');
+      const response = await fetchWithAuthRetry('/api/admin/codes');
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.error || 'Không thể tải danh sách mã');
@@ -48,7 +49,7 @@ export default function CodeGenerationPanel() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/admin/codes', {
+      const response = await fetchWithAuthRetry('/api/admin/codes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

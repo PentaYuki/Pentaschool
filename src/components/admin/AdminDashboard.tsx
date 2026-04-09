@@ -9,6 +9,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { clearAuthUser } from '@/lib/auth-storage';
+import { fetchWithAuthRetry } from '@/lib/fetchWithAuthRetry';
 
 interface StatCard { label: string; value: string | number; delta?: string; color: string; icon: React.ReactNode }
 interface User { id: string; name: string; email: string; role: string; isActive: boolean; createdAt: string; className?: string; schoolName?: string }
@@ -103,7 +104,7 @@ export default function AdminDashboard() {
     setLoadingUsers(true);
     try {
       // Try general users endpoint first
-      const r1 = await fetch('/api/admin/users');
+      const r1 = await fetchWithAuthRetry('/api/admin/users');
       if (r1.ok) {
         const data = await r1.json();
         const arr = Array.isArray(data) ? data : data.users || [];
@@ -113,8 +114,8 @@ export default function AdminDashboard() {
     try {
       // Fallback: fetch teachers + students separately and merge
       const [r2, r3] = await Promise.allSettled([
-        fetch('/api/admin/codes/users'),
-        fetch('/api/admin/users?role=STUDENT'),
+        fetchWithAuthRetry('/api/admin/codes/users'),
+        fetchWithAuthRetry('/api/admin/users?role=STUDENT'),
       ]);
       const merged: User[] = [];
       if (r2.status === 'fulfilled' && r2.value.ok) {
