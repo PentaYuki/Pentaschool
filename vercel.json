@@ -11,9 +11,6 @@
       "schedule": "0 0 * * *"
     }
   ],
-  "api": {
-    "bodySizeLimit": "50mb"
-  },
   "functions": {
     "src/app/api/**/*": {
       "maxDuration": 60
