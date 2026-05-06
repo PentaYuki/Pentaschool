@@ -47,10 +47,8 @@ const nextConfig = {
     ],
   },
   async headers() {
-    const isDev = process.env.NODE_ENV === 'development';
-    const scriptSrc = isDev
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:;"
-      : "script-src 'self' 'unsafe-inline' https: http:;";
+    // KaTeX and Fabric.js require eval() — keep 'unsafe-eval' in production too
+    const scriptSrc = "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:;";
 
     return [
       {
