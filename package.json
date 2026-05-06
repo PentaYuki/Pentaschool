@@ -10,7 +10,7 @@
     "start": "next start",
     "worker": "tsx src/jobs/worker.ts",
     "worker:cleanup": "tsx src/jobs/cleanup.ts",
-    "postinstall": "prisma generate",
+    "postinstall": "node scripts/postinstall.js",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
