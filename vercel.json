@@ -1,10 +1,11 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "prisma generate && next build",
   "outputDirectory": ".next",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["sin1"],
+  "skipAutoDetectionAPIsForBuild": true,
   "crons": [
     {
       "path": "/api/cron/job-cleanup",
