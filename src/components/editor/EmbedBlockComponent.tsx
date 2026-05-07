@@ -202,7 +202,8 @@ export default function EmbedBlockComponent({
           });
           if (!signRes.ok) {
             const e = await signRes.json().catch(() => ({}));
-            throw new Error(e?.error || "Không tạo được signed upload URL");
+            const errorMsg = typeof e?.error === "string" ? e.error : "Không tạo được signed upload URL";
+            throw new Error(errorMsg);
           }
 
           const signed = await signRes.json();
