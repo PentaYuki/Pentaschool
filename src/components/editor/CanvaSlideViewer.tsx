@@ -103,37 +103,33 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
     setIsLoading(false);
   }, [slidesData]);
 
-  // ── On slide change: reset phase, auto-run animations, auto-advance ─
+  // ── On slide change: auto-run animations, then auto-advance ─
   useEffect(() => {
     setPhase("slide");
     setQuizCountdown(null);
     setIsPlaying(false);
 
-    // Reset animation state: objects có animation về opacity=0, không animation thì hiện
-    const resetTimer = setTimeout(() => {
-      canvasRef.current?.resetAnimationState?.();
-    }, 300);
-
-    // Auto-run animations after reset, and auto-advance when done
+    // Wait for canvas to finish loading + rendering, then auto-run animations
     const animTimer = setTimeout(() => {
       const currentSlide = slides[idx];
       const shouldBlockByQuiz = !!currentSlide?.quiz && !correct.has(currentSlide.id);
       
+      // Run animations — objects appear one by one
+      // When done, auto-advance to next slide (unless quiz blocks)
       canvasRef.current?.runAnimations?.(() => {
-        // Animation complete callback — auto-advance if no quiz blocking
         setIsPlaying(false);
         if (!shouldBlockByQuiz && idx < slides.length - 1) {
-          // Small delay before moving to next slide for visual polish
-          setTimeout(() => setIdx((i) => i + 1), 800);
+          // Advance to next slide immediately
+          setIdx((i) => i + 1);
         }
       });
       setIsPlaying(true);
-    }, 800);
+    }, 1200);
 
     const slide = slides[idx];
     if (!slide?.quiz || correct.has(slide.id)) {
-      // No quiz, or already answered correctly — just enjoy the slide
-      return () => { clearTimeout(resetTimer); clearTimeout(animTimer); };
+      // No quiz, or already answered correctly
+      return () => clearTimeout(animTimer);
     }
 
     // Has unanswered quiz:
@@ -147,14 +143,12 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
     }, 4000);
 
     return () => {
-      clearTimeout(resetTimer);
       clearTimeout(animTimer);
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
     };
-    // NOTE: `correct` intentionally omitted from deps — only re-run when slide index changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, slides.length]);
 
@@ -188,7 +182,6 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
   // ── Navigation ────────────────────────────────────────────────────────────
   const goNext = useCallback(() => {
     if (hasQuiz && !isCorrect) {
-      // Cancel any pending countdown and jump straight to quiz
       setQuizCountdown(null);
       setPhase("quiz");
       return;
@@ -212,13 +205,11 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
 
   const onQuizReset = useCallback(() => {
     if (!slide) return;
-    // Remove from submitted so the next attempt can update state again
     setSubmitted((prev) => {
       const next = new Set(prev);
       next.delete(slide.id);
       return next;
     });
-    // Bump key to fully remount QuizViewer with fresh internal state
     setQuizKey((k) => k + 1);
   }, [slide]);
 
@@ -231,13 +222,10 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
   const bgHex       = slide?.backgroundColor;
   const light       = isColorLight(bgHex);
   const headerStyle = bgHex ? { background: bgHex } : undefined;
-  // Fallback gradient when no custom color
   const headerCls   = bgHex
     ? (light ? "text-gray-900" : "text-white")
     : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white";
-  // Card body: very subtle tint of the slide bg
   const bodyStyle   = bgHex ? { background: hexAlpha(bgHex, 0.06) } : undefined;
-  // Border uses a semi-transparent version of the slide color
   const borderStyle = bgHex ? { borderColor: hexAlpha(bgHex, 0.35) } : undefined;
 
   // ── Thumbnail bar ─────────────────────────────────────────────────────────
@@ -246,7 +234,6 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
       {slides.map((s, i) => {
         const sCorrect   = correct.has(s.id);
         const sSubmitted = submitted.has(s.id);
-        // Dot: green = correct, orange = submitted but wrong, violet = has quiz (unattempted)
         const dotCls = s.quiz
           ? sCorrect   ? "bg-green-500"
           : sSubmitted ? "bg-orange-400"
@@ -296,12 +283,10 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
           Bài Trình Chiếu
         </h3>
 
-        {/* Quiz card — themed from slide backgroundColor */}
         <div
           className="w-full rounded-2xl border-2 overflow-hidden shadow-xl"
           style={{ ...bodyStyle, ...borderStyle }}
         >
-          {/* ── Header ── */}
           <div
             className={`px-6 py-4 flex items-center justify-between ${headerCls}`}
             style={headerStyle}
@@ -318,7 +303,6 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
               </div>
             </div>
 
-            {/* Status badge */}
             {isCorrect ? (
               <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold ${light ? "bg-black/10 text-gray-800" : "bg-white/25 text-white"}`}>
                 <CheckCircle size={14} /> Đúng rồi!
@@ -330,7 +314,6 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
             ) : null}
           </div>
 
-          {/* ── Quiz content (always white background for readability) ── */}
           <div className="p-6 bg-white">
             <QuizViewer
               key={quizKey}
@@ -341,7 +324,6 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
             />
           </div>
 
-          {/* ── Wrong-answer feedback + retry ── */}
           {isSubmitted && !isCorrect && (
             <div className="px-6 pb-5 pt-1 bg-white border-t border-gray-100">
               <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
@@ -362,7 +344,6 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
             </div>
           )}
 
-          {/* ── Correct → continue button ── */}
           {isCorrect && (
             <div className="px-6 pb-6 pt-2 bg-white border-t border-gray-100">
               <button
@@ -398,7 +379,7 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
         Bài Trình Chiếu
       </h3>
 
-      {/* Canvas wrapper */}
+      {/* Canvas wrapper — key={slide.id} ensures CanvasEditorPro fully remounts on slide change */}
       <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-lg border border-gray-300 dark:border-gray-700 flex items-center justify-center group">
         <div className="w-full h-full">
           {slide && typeof window !== "undefined" && (
@@ -415,7 +396,7 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
           )}
         </div>
 
-        {/* Quiz countdown overlay — counts down before auto-flipping to quiz */}
+        {/* Quiz countdown overlay */}
         {quizCountdown !== null && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-2 bg-black/60 backdrop-blur-sm px-6 py-4 rounded-2xl">
@@ -428,7 +409,7 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
           </div>
         )}
 
-        {/* Nav arrows — appear on hover */}
+        {/* Nav arrows */}
         <div className="absolute inset-0 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity px-4 pointer-events-none">
           <button
             onClick={goPrev}
@@ -442,7 +423,6 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
             className="pointer-events-auto w-12 h-12 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow-lg flex items-center justify-center transition"
             title={hasQuiz && !isCorrect ? "Cần trả lời đúng quiz trước" : "Slide tiếp theo"}
           >
-            {/* Lock icon hint when quiz is blocking */}
             {hasQuiz && !isCorrect
               ? <span className="text-lg">🔒</span>
               : <ChevronRight size={24} />
@@ -465,15 +445,12 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
           <button
             onClick={() => {
               setIsPlaying(true);
-              canvasRef.current?.resetAnimationState?.();
-              setTimeout(() => {
-                canvasRef.current?.runAnimations?.(() => {
-                  setIsPlaying(false);
-                });
-                if (slide?.audioUrl && audioRef.current) {
-                  audioRef.current.play().catch(() => {});
-                }
-              }, 100);
+              canvasRef.current?.runAnimations?.(() => {
+                setIsPlaying(false);
+              });
+              if (slide?.audioUrl && audioRef.current) {
+                audioRef.current.play().catch(() => {});
+              }
             }}
             disabled={isPlaying}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-500 text-white rounded-lg transition font-medium shadow-lg text-sm"
@@ -484,11 +461,9 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
             }
           </button>
 
-          {/* Quiz button — always visible when slide has quiz */}
           {hasQuiz && (
             <button
               onClick={() => {
-                // Cancel any auto-countdown and flip immediately
                 setQuizCountdown(null);
                 setPhase("quiz");
               }}
@@ -522,7 +497,6 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
         )}
       </div>
 
-      {/* Thumbnail legend */}
       <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-violet-500 inline-block" /> Có quiz (chưa làm)</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block" /> Đã làm (chưa đúng)</span>
