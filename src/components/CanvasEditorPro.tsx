@@ -447,12 +447,18 @@ export const CanvasEditorPro = forwardRef<
     // Run animations sequentially for objects that have `animation` metadata
     runAnimations: (onComplete?: () => void) => {
       const canvas = fabricCanvasRef.current;
-      if (!canvas || canvas.disposed) return;
+      if (!canvas || canvas.disposed) {
+        setTimeout(() => onComplete?.(), 100);
+        return;
+      }
 
       const animatedObjects = canvas.getObjects().filter((o: any) => o.animation).slice();
       animatedObjects.sort((a: any, b: any) => (a.animationOrder || 0) - (b.animationOrder || 0));
 
-      if (animatedObjects.length === 0) return;
+      if (animatedObjects.length === 0) {
+        setTimeout(() => onComplete?.(), 100);
+        return;
+      }
 
       // NOTE: Objects are already at opacity=0 from loadFromJSON (which sets them
       // hidden before the first render). We do NOT set opacity=0 here again — that
