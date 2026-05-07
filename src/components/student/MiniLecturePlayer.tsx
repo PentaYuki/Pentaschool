@@ -626,7 +626,11 @@ function BlockRenderer({ block, resolveInteractions }: { block: PageBlock; resol
         {block.type === "EMBED" && block.content && (
           <div className="rounded-xl overflow-hidden border border-gray-200">
             <iframe
-              src={block.content}
+              src={
+                /canva\.com\/design\//.test(block.content)
+                  ? `${block.content.replace(/\?.*$/, '').replace(/\/view$/, '')}/watch?embed=1&autoplay=1`
+                  : block.content
+              }
               className="w-full border-0"
               style={{ height: '450px' }}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
