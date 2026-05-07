@@ -972,11 +972,11 @@ export const CanvasEditorPro = forwardRef<
           }
           return originalClear();
         } catch (error) {
-        canvas.requestRenderAll();
-        setEditingLatexId(obj.__latexId);
-      };
-
-      // Helper: re-hide a LaTeX textbox and refresh overlay
+          console.warn('Canvas clear error:', error);
+          // Gracefully degrade - clear objects without context
+          canvas._objects.length = 0;
+          canvas._activeObject = null;
+        }
       };
 
       fabricCanvasRef.current = canvas;
