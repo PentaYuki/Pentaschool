@@ -508,7 +508,15 @@ function BlockRenderer({ block, resolveInteractions }: { block: PageBlock; resol
         )}
         {block.type === "DOCUMENT" && (!block.content || !block.content.startsWith("{")) && block.content && block.content.startsWith("/") && (
           <div className="rounded-xl overflow-hidden border border-gray-200">
-            <iframe src={block.content} className="w-full border-0" style={{ height: '450px' }} sandbox="allow-scripts allow-same-origin allow-forms allow-popups" title="Interactive lesson" />
+            <iframe 
+              src={block.content} 
+              className="w-full border-0" 
+              style={{ height: '450px' }} 
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation" 
+              allowFullScreen 
+              allow="autoplay; fullscreen; picture-in-picture"
+              title="Interactive lesson" 
+            />
           </div>
         )}
         {block.type === "DOCUMENT" && !block.content && (
@@ -621,7 +629,9 @@ function BlockRenderer({ block, resolveInteractions }: { block: PageBlock; resol
               src={block.content}
               className="w-full border-0"
               style={{ height: '450px' }}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+              allowFullScreen
+              allow="autoplay; fullscreen; picture-in-picture"
               title="Embedded content"
             />
           </div>

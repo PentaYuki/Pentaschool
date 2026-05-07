@@ -4,9 +4,9 @@
  *
  * Priority order for DB connection string:
  *   1. DATABASE_URL              (set explicitly in Vercel env vars — preferred)
- *   2. POSTGRES_PRISMA_URL       (Vercel Postgres / Neon integration)
- *   3. POSTGRES_URL_NON_POOLING  (Vercel Postgres non-pooled)
- *   4. POSTGRES_URL              (Vercel Postgres pooled)
+ *   2. POSTGRES_PRISMA_URL       (Supabase pooled integration)
+ *   3. POSTGRES_URL_NON_POOLING  (Supabase non-pooled)
+ *   4. POSTGRES_URL              (Supabase direct)
  *   5. SUPABASE_DB_URL           (Supabase direct connection)
  *   6. Dummy value               (build-time only, no real DB access needed for `prisma generate`)
  */
@@ -39,7 +39,7 @@ if (!process.env.DATABASE_URL) {
     console.warn('⚠️  No database URL found in environment.');
     console.warn('    Using dummy URL so Prisma client can be generated.');
     console.warn('    → Go to Vercel → Settings → Environment Variables');
-    console.warn('    → Add: DATABASE_URL = <your Neon/Supabase connection string>');
+    console.warn('    → Add: DATABASE_URL = <your Supabase connection string>');
     process.env.DATABASE_URL =
       'postgresql://build_placeholder:build_placeholder@localhost:5432/build_placeholder';
   }

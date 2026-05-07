@@ -66,10 +66,10 @@ function toEmbedUrl(url: string): string {
   const vimeo = url.match(/vimeo\.com\/(\d+)/);
   if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
 
-  // Canva Design → append ?embed
+  // Canva Design → append ?embed&autoplay=1
   if (/canva\.com\/design\//.test(url)) {
     const cleanUrl = url.replace(/\?.*$/, '');
-    return cleanUrl.endsWith('/view') ? `${cleanUrl}?embed` : `${cleanUrl}/view?embed`;
+    return cleanUrl.endsWith('/view') ? `${cleanUrl}?embed&autoplay=1` : `${cleanUrl}/view?embed&autoplay=1`;
   }
 
   // Genially → giữ nguyên URL (hỗ trợ iframe trực tiếp)

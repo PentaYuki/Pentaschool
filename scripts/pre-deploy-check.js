@@ -179,7 +179,7 @@ log('\n════════════════════════�
 if (failedChecks === 0) {
   log('🚀 READY FOR DEPLOYMENT!', 'green');
   log('\nNext steps:', 'green');
-  log('1. Create Neon PostgreSQL database: https://neon.tech', 'green');
+  log('1. Create Supabase PostgreSQL database: https://supabase.com', 'green');
   log('2. Setup Vercel project: https://vercel.com/new', 'green');
   log('3. Add environment variables to Vercel', 'green');
   log('4. Connect GitHub repository to Vercel', 'green');
