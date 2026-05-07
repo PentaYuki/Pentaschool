@@ -972,11 +972,11 @@ export const CanvasEditorPro = forwardRef<
           }
           return originalClear();
         } catch (error) {
-          console.warn('Canvas clear error:', error);
-          // Gracefully degrade - clear objects without context
-          canvas._objects.length = 0;
-          canvas._activeObject = null;
-        }
+        canvas.requestRenderAll();
+        setEditingLatexId(obj.__latexId);
+      };
+
+      // Helper: re-hide a LaTeX textbox and refresh overlay
       };
 
       fabricCanvasRef.current = canvas;
@@ -1021,7 +1021,16 @@ export const CanvasEditorPro = forwardRef<
           // CRITICAL: Explicitly copy animation custom properties onto the fabric object
           // Fabric's enlivenObjects may not copy unknown properties automatically
           if (fabricObj && jsonObj && jsonObj !== fabricObj) {
-            if (jsonObj.animation !== undefined) fabricObj.animation = jsonObj.animation;
+            if (jsonObj.animation !== undefined) {
+              fabricObj.animation = jsonObj.animation;
+              // ── FIX: Animation flicker ──
+              // In presentation mode, we must set opacity to 0 immediately during object creation (reviver)
+              // so they don't appear for a split second before the first render.
+              if (isPresentationMode) {
+                (fabricObj as any)._targetOpacity = fabricObj.opacity ?? 1;
+                fabricObj.set('opacity', 0);
+              }
+            }
             if (jsonObj.animationOrder !== undefined) fabricObj.animationOrder = jsonObj.animationOrder;
             if (jsonObj.isBackgroundFrame !== undefined) fabricObj.isBackgroundFrame = jsonObj.isBackgroundFrame;
           }
@@ -1041,13 +1050,17 @@ export const CanvasEditorPro = forwardRef<
             // 400ms timeout, which caused: visible → hidden → animate-in (the flicker).
             canvas.forEachObject((obj: any) => {
               if (isPresentationMode && obj.animation) {
-                obj.opacity = 0; // will be animated back to 1 by runAnimations()
+                // If _targetOpacity was not set by reviver, save current before hiding
+                if (obj._targetOpacity === undefined) {
+                  obj._targetOpacity = obj.opacity ?? 1;
+                }
+                obj.set('opacity', 0); // will be animated back to 1 by runAnimations()
               } else {
                 obj.set('opacity', 1);
               }
               obj.set('visible', true);
             });
-            
+
             // After loading, ensure background color is applied
             if (slide?.backgroundColor) {
               canvas.backgroundColor = slide.backgroundColor;
@@ -1056,16 +1069,16 @@ export const CanvasEditorPro = forwardRef<
 
             // IMPORTANT: lock objects after async JSON load in readOnly mode
             applyReadOnlyRestrictions();
-            
+
             // Ensure all images are fully loaded before rendering
             let imageCount = 0;
-            
+
             canvas.forEachObject((obj: any) => {
               if (obj.type === 'image') {
                 imageCount++;
               }
             });
-            
+
             // safeRender: render canvas then fire optional callback
             const safeRender = (delayMs: number, afterRender?: () => void) => {
               const timeoutId = setTimeout(() => {
@@ -1105,35 +1118,35 @@ export const CanvasEditorPro = forwardRef<
           console.error('Error loading canvas data from JSON:', error);
           // If loading fails, continue without data
         }
-    } else if (slide?.backgroundColor) {
-      // If no canvas data but has background color, apply it
-      canvas.backgroundColor = slide.backgroundColor;
-      setBackgroundColor(slide.backgroundColor);
-      canvas.requestRenderAll();
-    }
-
-    if (!readOnly) {
-      // Event handlers only when NOT in readOnly mode
-      // Helper: reveal a LaTeX textbox in Fabric for editing (show raw source)
-      const revealLatexObj = (obj: any) => {
-        if (!obj || !obj.__latexId) return;
-        obj.set({ opacity: 1 });
+      } else if (slide?.backgroundColor) {
+        // If no canvas data but has background color, apply it
+        canvas.backgroundColor = slide.backgroundColor;
+        setBackgroundColor(slide.backgroundColor);
         canvas.requestRenderAll();
-        setEditingLatexId(obj.__latexId);
-      };
+      }
 
-      // Helper: re-hide a LaTeX textbox and refresh overlay
-      const hideLatexObj = (obj: any) => {
-        if (!obj || !obj.__latexId) return;
-        // Update overlay text in case user edited it
-        obj.set({ opacity: 0 });
-        canvas.requestRenderAll();
-        setEditingLatexId(null);
-        // Rebuild all overlays to pick up any text changes
-        setTimeout(() => rebuildLatexOverlaysRef.current?.(), 50);
-      };
+      if (!readOnly) {
+        // Event handlers only when NOT in readOnly mode
+        // Helper: reveal a LaTeX textbox in Fabric for editing (show raw source)
+        const revealLatexObj = (obj: any) => {
+          if (!obj || !obj.__latexId) return;
+          obj.set({ opacity: 1 });
+          canvas.requestRenderAll();
+          setEditingLatexId(obj.__latexId);
+        };
 
-      canvas.on('selection:created', (e: any) => {
+        // Helper: re-hide a LaTeX textbox and refresh overlay
+        const hideLatexObj = (obj: any) => {
+          if (!obj || !obj.__latexId) return;
+          // Update overlay text in case user edited it
+          obj.set({ opacity: 0 });
+          canvas.requestRenderAll();
+          setEditingLatexId(null);
+          // Rebuild all overlays to pick up any text changes
+          setTimeout(() => rebuildLatexOverlaysRef.current?.(), 50);
+        };
+
+        canvas.on('selection:created', (e: any) => {
         const obj = e.selected?.[0] || null;
         setSelectedObject(obj);
         onSelectionChange?.(obj?.animation ?? null);

@@ -60,7 +60,7 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
   const [isLoading, setIsLoading] = useState(true);
   const [idx, setIdx]             = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [autoNextAfterAudio, setAutoNextAfterAudio] = useState(true);
+  const [autoAdvanceEnabled, setAutoAdvanceEnabled] = useState(false); // auto-advance after animation or audio
 
   const [phase, setPhase] = useState<"slide" | "quiz">("slide");
 
@@ -68,6 +68,8 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
   const [correct,   setCorrect]   = useState<Set<string>>(new Set());
   const [quizKey, setQuizKey] = useState(0);
   const [quizCountdown, setQuizCountdown] = useState<number | null>(null);
+  const [quizAttempts, setQuizAttempts] = useState<number>(0);
+  const MAX_QUIZ_ATTEMPTS = 3;
 
   const audioRef  = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<CanvasEditorProHandle>(null);
@@ -78,40 +80,58 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
       const raw = typeof slidesData === "string" ? JSON.parse(slidesData) : slidesData;
       const parsedSlides = Array.isArray(raw) ? raw : (Array.isArray(raw?.slides) ? raw.slides : []);
       setSlides(parsedSlides.length > 0 ? parsedSlides : []);
-      if (raw && !Array.isArray(raw) && typeof raw.autoNextAfterAudio === "boolean") {
-        setAutoNextAfterAudio(raw.autoNextAfterAudio);
+      if (raw && !Array.isArray(raw) && typeof raw.autoAdvanceEnabled === "boolean") {
+        setAutoAdvanceEnabled(raw.autoAdvanceEnabled);
       } else {
-        setAutoNextAfterAudio(true);
+        setAutoAdvanceEnabled(false);
       }
     } catch {
       setSlides([]);
-      setAutoNextAfterAudio(true);
+      setAutoAdvanceEnabled(false);
     }
     setIsLoading(false);
   }, [slidesData]);
 
-  // ── On slide change: reset, then run animations → auto-advance ─
+  // ── On slide change: reset, then run animations (auto-advance on complete if enabled) ─
   useEffect(() => {
     setPhase("slide");
     setQuizCountdown(null);
     setIsPlaying(false);
+    setQuizAttempts(0);
 
     const currentSlide = slides[idx];
-    const shouldBlockByQuiz = !!currentSlide?.quiz && !correct.has(currentSlide.id);
+    const slideAppearedAt = Date.now();
 
     // Wait for canvas to load, then run animations
     const t = setTimeout(() => {
-      canvasRef.current?.runAnimations?.(() => {
-        setIsPlaying(false);
-        if (!shouldBlockByQuiz && idx < slides.length - 1) {
-          setIdx((i) => i + 1);
-        }
-      });
+      if (autoAdvanceEnabled) {
+        // Auto-advance after animations complete + minimum hold time
+        const onAnimationsDone = () => {
+          setIsPlaying(false);
+          const currentSlide = slides[idx];
+          const shouldBlockByQuiz = !!currentSlide?.quiz && !correct.has(currentSlide.id);
+          if (autoAdvanceEnabled && !shouldBlockByQuiz) {
+            // ── FIX: Wait exactly 2 seconds after animations finish ──
+            const holdTimer = setTimeout(() => {
+              if (idx < slides.length - 1) {
+                setIdx((i) => i + 1);
+              }
+            }, 2000);
+            (window as any).__slideHoldTimer = holdTimer;
+          }
+        };
+        canvasRef.current?.runAnimations?.(onAnimationsDone);
+      } else {
+        canvasRef.current?.runAnimations?.(() => setIsPlaying(false));
+      }
       setIsPlaying(true);
     }, 1500);
 
     if (!currentSlide?.quiz || correct.has(currentSlide.id)) {
-      return () => clearTimeout(t);
+      return () => {
+        clearTimeout(t);
+        clearTimeout((window as any).__slideHoldTimer);
+      };
     }
 
     const t1 = setTimeout(() => setQuizCountdown(3), 1800);
@@ -119,20 +139,24 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
     const t3 = setTimeout(() => setQuizCountdown(1), 3800);
     const t4 = setTimeout(() => { setQuizCountdown(null); setPhase("quiz"); }, 4600);
 
-    return () => { clearTimeout(t); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+    return () => {
+      clearTimeout(t);
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+      clearTimeout((window as any).__slideHoldTimer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, slides.length]);
 
-  // ── Auto-play audio on slide change ──────────────────────────────────────
+  // ── Auto-play audio on slide change (auto-advance when audio ends if enabled) ──
   const handleAudioEnd = useCallback(() => {
     setIsPlaying(false);
-    if (!autoNextAfterAudio) return;
+    if (!autoAdvanceEnabled) return;
     const currentSlide = slides[idx];
     const shouldBlockByQuiz = !!currentSlide?.quiz && !correct.has(currentSlide.id);
     if (!shouldBlockByQuiz && idx < slides.length - 1) {
       setIdx((prev) => prev + 1);
     }
-  }, [idx, slides, correct, autoNextAfterAudio]);
+  }, [idx, slides, correct, autoAdvanceEnabled]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -152,12 +176,17 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
   // ── Navigation ────────────────────────────────────────────────────────────
   const goNext = useCallback(() => {
     if (hasQuiz && !isCorrect) {
+      if (quizAttempts >= MAX_QUIZ_ATTEMPTS) {
+        // Allow skip after max failed attempts
+        if (idx < slides.length - 1) setIdx((i) => i + 1);
+        return;
+      }
       setQuizCountdown(null);
       setPhase("quiz");
       return;
     }
     if (idx < slides.length - 1) setIdx((i) => i + 1);
-  }, [hasQuiz, isCorrect, idx, slides.length]);
+  }, [hasQuiz, isCorrect, idx, slides.length, quizAttempts]);
 
   const goPrev = useCallback(() => {
     if (idx > 0) setIdx((i) => i - 1);
@@ -167,7 +196,12 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
   const onQuizSubmitted = useCallback((allCorrect: boolean) => {
     if (!slide) return;
     setSubmitted((prev) => new Set([...prev, slide.id]));
-    if (allCorrect) setCorrect((prev) => new Set([...prev, slide.id]));
+    if (allCorrect) {
+      setCorrect((prev) => new Set([...prev, slide.id]));
+      setQuizAttempts(0);
+    } else {
+      setQuizAttempts((prev) => prev + 1);
+    }
   }, [slide]);
 
   const onQuizReset = useCallback(() => {

@@ -103,7 +103,7 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
   const [isPresentMode, setIsPresentMode] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false); // New: Review mode for teacher preview
   const [zoom, setZoom] = useState(1);
-  const [autoNextAfterAudio, setAutoNextAfterAudio] = useState(true);
+  const [autoAdvanceEnabled, setAutoAdvanceEnabled] = useState(false);
   const [showNavButtons, setShowNavButtons] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedAnimation, setSelectedAnimation] = useState<string | null>(null);
@@ -301,9 +301,8 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
             ? JSON.parse(initialSlidesData)
             : initialSlidesData;
 
-          // Support both legacy (bare array) and new { slides, autoNextAfterAudio } format
           const slidesArr = Array.isArray(raw) ? raw : (Array.isArray(raw?.slides) ? raw.slides : null);
-          if (raw?.autoNextAfterAudio !== undefined) setAutoNextAfterAudio(!!raw.autoNextAfterAudio);
+          if (raw?.autoAdvanceEnabled !== undefined) setAutoAdvanceEnabled(!!raw.autoAdvanceEnabled);
 
           if (slidesArr && slidesArr.length > 0) {
             initializeSlides(slidesArr);
@@ -338,9 +337,9 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
     }
   };
 
-  // Auto-advance slides based on audio duration (only if enabled)
+  // Auto-advance slides based on audio duration (only if autoAdvanceEnabled)
   useEffect(() => {
-    if (!isPresentMode || !currentSlide?.audioUrl || !autoNextAfterAudio) return;
+    if (!isPresentMode || !currentSlide?.audioUrl || !autoAdvanceEnabled) return;
 
     const audio = audioRef.current;
     if (!audio) return;
@@ -359,7 +358,7 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
       audio.removeEventListener('ended', handleAudioEnd);
       audio.pause();
     };
-  }, [isPresentMode, currentSlide, currentSlideIndex, slides.length, setCurrentSlide, autoNextAfterAudio]);
+  }, [isPresentMode, currentSlide, currentSlideIndex, slides.length, setCurrentSlide, autoAdvanceEnabled]);
 
   // ── Animation: use onReady callback from CanvasEditorPro instead of a fixed delay ──
   // This eliminates the "appear → disappear → animate-in" flicker because animated
@@ -494,8 +493,7 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
     if (isModal && onClose) {
       try {
         setIsSaving(true);
-        // Wrap slides + settings so CanvaSlideViewer can read autoNextAfterAudio
-        const slidesData = { slides, autoNextAfterAudio };
+        const slidesData = { slides, autoAdvanceEnabled };
         onClose(slidesData);
       } catch (e) {
         console.error('Error saving:', e);
@@ -515,7 +513,7 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
       // Convert slides + settings to JSON string, handling potential circular references
       let slidesData: string;
       try {
-        slidesData = JSON.stringify({ slides, autoNextAfterAudio });
+        slidesData = JSON.stringify({ slides, autoAdvanceEnabled });
       } catch (e) {
         console.error('Failed to stringify slides:', e);
         throw new Error('Slides data cannot be serialized');
@@ -732,6 +730,7 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
         <div className="flex-1 w-full flex items-center justify-center overflow-hidden relative">
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <CanvasEditorPro
+              key={currentSlide.id}
               ref={canvasEditorRef}
               slideId={currentSlide.id}
               readOnly
@@ -883,6 +882,7 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
         <div className="flex-1 w-full flex items-center justify-center overflow-hidden relative">
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <CanvasEditorPro
+              key={currentSlide.id}
               ref={canvasEditorRef}
               slideId={currentSlide.id}
               readOnly
@@ -1374,15 +1374,15 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
               </div>
             )}
 
-            {/* Auto-next Checkbox */}
+            {/* Auto-advance toggle */}
             <label className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded transition cursor-pointer text-sm">
               <input
                 type="checkbox"
-                checked={autoNextAfterAudio}
-                onChange={(e) => setAutoNextAfterAudio(e.target.checked)}
+                checked={autoAdvanceEnabled}
+                onChange={(e) => setAutoAdvanceEnabled(e.target.checked)}
                 className="w-4 h-4 cursor-pointer"
               />
-              <span className="text-gray-700 font-medium">Tự động sang trang</span>
+              <span className="text-gray-700 font-medium">Tự động</span>
             </label>
 
             <button
@@ -1442,6 +1442,7 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
         <main className="flex-1 bg-gray-900 overflow-hidden flex items-center justify-center relative" id="canvas-workspace">
           {currentSlide && (
             <CanvasEditorPro
+              key={currentSlide.id}
               ref={canvasEditorRef}
               slideId={currentSlide.id}
               onRightPanelToggle={() => setIsRightPanelOpen(!isRightPanelOpen)}
