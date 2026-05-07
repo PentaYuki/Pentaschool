@@ -403,6 +403,7 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
         <div className="w-full h-full">
           {slide && typeof window !== "undefined" && (
             <CanvasEditorPro
+              key={slide.id}
               ref={canvasRef}
               slideId={slide.id}
               slideData={slide}
