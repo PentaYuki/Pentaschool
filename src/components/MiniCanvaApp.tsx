@@ -595,7 +595,7 @@ export const MiniCanvaApp: React.FC<MiniCanvaAppProps> = ({
     }
     try {
       setIsSaving(true);
-      const slidesData = { slides, autoNextAfterAudio };
+      const slidesData = { slides, autoAdvanceEnabled };
       const lessonData = canvaToLesson(slidesData, 'Bài giảng từ Canva');
       if (!lessonData) {
         toast.error('Không có dữ liệu slides để xuất');
