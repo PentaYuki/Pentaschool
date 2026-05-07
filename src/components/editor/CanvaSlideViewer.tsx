@@ -103,31 +103,51 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
     setIsLoading(false);
   }, [slidesData]);
 
-  // ── On slide change: reset phase, run animations, schedule quiz if needed ─
+  // ── On slide change: reset phase, auto-run animations, auto-advance ─
   useEffect(() => {
     setPhase("slide");
     setQuizCountdown(null);
+    setIsPlaying(false);
 
-    // Run canvas entry animations shortly after render
-    const animTimer = setTimeout(() => canvasRef.current?.runAnimations?.(), 400);
+    // Reset animation state: objects có animation về opacity=0, không animation thì hiện
+    const resetTimer = setTimeout(() => {
+      canvasRef.current?.resetAnimationState?.();
+    }, 300);
+
+    // Auto-run animations after reset, and auto-advance when done
+    const animTimer = setTimeout(() => {
+      const currentSlide = slides[idx];
+      const shouldBlockByQuiz = !!currentSlide?.quiz && !correct.has(currentSlide.id);
+      
+      canvasRef.current?.runAnimations?.(() => {
+        // Animation complete callback — auto-advance if no quiz blocking
+        setIsPlaying(false);
+        if (!shouldBlockByQuiz && idx < slides.length - 1) {
+          // Small delay before moving to next slide for visual polish
+          setTimeout(() => setIdx((i) => i + 1), 800);
+        }
+      });
+      setIsPlaying(true);
+    }, 800);
 
     const slide = slides[idx];
     if (!slide?.quiz || correct.has(slide.id)) {
       // No quiz, or already answered correctly — just enjoy the slide
-      return () => clearTimeout(animTimer);
+      return () => { clearTimeout(resetTimer); clearTimeout(animTimer); };
     }
 
     // Has unanswered quiz:
     // Show a 3-2-1 countdown on the slide, then flip to quiz phase
-    const t1 = setTimeout(() => setQuizCountdown(3), 800);
-    const t2 = setTimeout(() => setQuizCountdown(2), 1800);
-    const t3 = setTimeout(() => setQuizCountdown(1), 2800);
+    const t1 = setTimeout(() => setQuizCountdown(3), 1200);
+    const t2 = setTimeout(() => setQuizCountdown(2), 2200);
+    const t3 = setTimeout(() => setQuizCountdown(1), 3200);
     const t4 = setTimeout(() => {
       setQuizCountdown(null);
       setPhase("quiz");
-    }, 3600);
+    }, 4000);
 
     return () => {
+      clearTimeout(resetTimer);
       clearTimeout(animTimer);
       clearTimeout(t1);
       clearTimeout(t2);
@@ -389,7 +409,7 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
               readOnly={true}
               zoom={1}
               onRightPanelToggle={undefined}
-              isPresentationMode={false}
+              isPresentationMode={true}
             />
           )}
         </div>
@@ -444,12 +464,15 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
           <button
             onClick={() => {
               setIsPlaying(true);
-              canvasRef.current?.runAnimations?.();
-              if (slide?.audioUrl && audioRef.current) {
-                audioRef.current.play().catch(() => {});
-              } else {
-                setTimeout(() => setIsPlaying(false), 3000);
-              }
+              canvasRef.current?.resetAnimationState?.();
+              setTimeout(() => {
+                canvasRef.current?.runAnimations?.(() => {
+                  setIsPlaying(false);
+                });
+                if (slide?.audioUrl && audioRef.current) {
+                  audioRef.current.play().catch(() => {});
+                }
+              }, 100);
             }}
             disabled={isPlaying}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-500 text-white rounded-lg transition font-medium shadow-lg text-sm"

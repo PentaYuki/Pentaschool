@@ -110,7 +110,7 @@ export interface CanvasEditorProHandle {
   addTextTemplate: (type: 'heading' | 'description' | 'note', animation?: { type: string; order?: number } | null) => void;
   addImageFromUrl: (url: string) => void;
   setBackgroundImage: (url: string) => void;
-  runAnimations: () => void;
+  runAnimations: (onComplete?: () => void) => void;
   setAnimationForSelected: (animation: { type: string; order?: number } | null) => void;
   resetAnimationState: () => void;
   resetCanvasToOriginalState: () => void;
@@ -445,7 +445,7 @@ export const CanvasEditorPro = forwardRef<
       );
     },
     // Run animations sequentially for objects that have `animation` metadata
-    runAnimations: () => {
+    runAnimations: (onComplete?: () => void) => {
       const canvas = fabricCanvasRef.current;
       if (!canvas || canvas.disposed) return;
 
@@ -536,6 +536,8 @@ export const CanvasEditorPro = forwardRef<
             try { obj.set('opacity', originalOpacities.get(obj) ?? 1); } catch (e) {}
           });
           safeRender();
+          // Notify caller that all animations are done
+          setTimeout(() => onComplete?.(), 300);
           return;
         }
 
@@ -794,15 +796,19 @@ export const CanvasEditorPro = forwardRef<
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
       
-      // Reset opacity to 1 for all objects (to show them after animations)
+      // CRITICAL: In presentation mode, objects WITH animation start at opacity=0 (hidden)
+      // Objects WITHOUT animation stay visible. LaTeX objects stay hidden.
       canvas.forEachObject((obj: any) => {
-        obj.set('opacity', obj.__latexId ? 0 : 1);
+        if (obj.__latexId) {
+          obj.set('opacity', 0); // LaTeX objects always hidden (overlay renders them)
+        } else if (obj.animation) {
+          obj.set('opacity', 0); // Animated objects start hidden
+        } else {
+          obj.set('opacity', 1); // Non-animated objects visible
+        }
+        obj.set('visible', true);
       });
       canvas.requestRenderAll();
-      
-      // CRITICAL: Save the reset state back to store so presentation exit shows correct canvas
-      const canvasData = canvas.toJSON(['animation', 'animationOrder', 'crossOrigin', 'hyperlink', 'soundUrl', 'soundName', 'animationDelay']);
-      updateSlide(slideId, { canvasData: sanitizeCanvasData(canvasData) });
     },
     resetCanvasToOriginalState: () => {
       // Reload canvas from original slide data to remove any animation artifacts
@@ -844,14 +850,18 @@ export const CanvasEditorPro = forwardRef<
     },
     resetAllObjects: () => {
       // Bring all objects back to visible state (opacity = 1)
+      // Non-animated objects become visible, animated objects remain hidden
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
 
       canvas.getObjects().forEach((obj: any) => {
-        obj.set({
-          opacity: obj.__latexId ? 0 : 1,
-          visible: true,
-        });
+        if (obj.__latexId) {
+          obj.set({ opacity: 0, visible: true }); // LaTeX stays hidden
+        } else if (obj.animation) {
+          obj.set({ opacity: 0, visible: true }); // Animated stays hidden — runAnimations will handle them
+        } else {
+          obj.set({ opacity: 1, visible: true }); // Non-animated becomes visible
+        }
       });
       canvas.renderAll();
     },
