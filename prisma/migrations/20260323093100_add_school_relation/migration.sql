@@ -5,8 +5,8 @@ CREATE TABLE "School" (
     "address" TEXT,
     "province" TEXT,
     "district" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 -- CreateTable
@@ -23,7 +23,7 @@ CREATE TABLE "Class" (
 CREATE TABLE "TeacherClass" (
     "teacherId" TEXT NOT NULL,
     "classId" TEXT NOT NULL,
-    "assignedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "assignedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY ("teacherId", "classId"),
     CONSTRAINT "TeacherClass_teacherId_fkey" FOREIGN KEY ("teacherId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
@@ -40,8 +40,8 @@ CREATE TABLE "ExamBank" (
     "fileUrl" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "authorId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "ExamBank_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -59,8 +59,8 @@ CREATE TABLE "BankQuestion" (
     "options" TEXT,
     "answer" TEXT NOT NULL,
     "explanation" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "BankQuestion_bankId_fkey" FOREIGN KEY ("bankId") REFERENCES "ExamBank" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -72,16 +72,16 @@ CREATE TABLE "Exam" (
     "className" TEXT,
     "duration" INTEGER NOT NULL DEFAULT 45,
     "status" TEXT NOT NULL DEFAULT 'DRAFT',
-    "openAt" DATETIME,
-    "closeAt" DATETIME,
+    "openAt" TIMESTAMP,
+    "closeAt" TIMESTAMP,
     "easyCount" INTEGER NOT NULL DEFAULT 5,
     "mediumCount" INTEGER NOT NULL DEFAULT 5,
     "hardCount" INTEGER NOT NULL DEFAULT 3,
     "variantCount" INTEGER NOT NULL DEFAULT 1,
     "shuffleOptions" BOOLEAN NOT NULL DEFAULT true,
     "creatorId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "Exam_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -114,8 +114,8 @@ CREATE TABLE "StudentExamAttempt" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "examId" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
-    "startedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "submittedAt" DATETIME,
+    "startedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "submittedAt" TIMESTAMP,
     "timeSpent" INTEGER,
     "answers" TEXT,
     "score" REAL,
@@ -123,9 +123,9 @@ CREATE TABLE "StudentExamAttempt" (
     "isPassed" BOOLEAN,
     "teacherFeedback" TEXT,
     "gradedBy" TEXT,
-    "gradedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "gradedAt" TIMESTAMP,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "StudentExamAttempt_examId_fkey" FOREIGN KEY ("examId") REFERENCES "Exam" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "StudentExamAttempt_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -136,14 +136,14 @@ CREATE TABLE "StudentTeacher" (
     "studentId" TEXT NOT NULL,
     "teacherId" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'pending',
-    "joinedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "joinedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "StudentTeacher_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "StudentTeacher_teacherId_fkey" FOREIGN KEY ("teacherId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- RedefineTables
-PRAGMA defer_foreign_keys=ON;
-PRAGMA foreign_keys=OFF;
+
+
+
 CREATE TABLE "new_Page" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "title" TEXT NOT NULL,
@@ -155,14 +155,14 @@ CREATE TABLE "new_Page" (
     "isPublished" BOOLEAN NOT NULL DEFAULT false,
     "publishMode" TEXT NOT NULL DEFAULT 'PRIVATE',
     "schoolId" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "Page_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Page" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "Page_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "Page_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 INSERT INTO "new_Page" ("authorId", "createdAt", "description", "id", "isPublished", "order", "parentId", "slug", "title", "updatedAt") SELECT "authorId", "createdAt", "description", "id", "isPublished", "order", "parentId", "slug", "title", "updatedAt" FROM "Page";
-DROP TABLE "Page";
+DROP TABLE "Page" CASCADE;
 ALTER TABLE "new_Page" RENAME TO "Page";
 CREATE INDEX "Page_authorId_idx" ON "Page"("authorId");
 CREATE INDEX "Page_parentId_idx" ON "Page"("parentId");
@@ -184,12 +184,12 @@ CREATE TABLE "new_User" (
     "subjects" TEXT,
     "level" TEXT,
     "teacherCode" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "User_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 INSERT INTO "new_User" ("createdAt", "email", "id", "isActive", "name", "password", "role", "updatedAt") SELECT "createdAt", "email", "id", "isActive", "name", "password", "role", "updatedAt" FROM "User";
-DROP TABLE "User";
+DROP TABLE "User" CASCADE;
 ALTER TABLE "new_User" RENAME TO "User";
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 CREATE UNIQUE INDEX "User_teacherCode_key" ON "User"("teacherCode");
@@ -198,8 +198,8 @@ CREATE INDEX "User_role_idx" ON "User"("role");
 CREATE INDEX "User_isActive_idx" ON "User"("isActive");
 CREATE INDEX "User_schoolId_idx" ON "User"("schoolId");
 CREATE INDEX "User_teacherCode_idx" ON "User"("teacherCode");
-PRAGMA foreign_keys=ON;
-PRAGMA defer_foreign_keys=OFF;
+
+
 
 -- CreateIndex
 CREATE UNIQUE INDEX "School_name_key" ON "School"("name");

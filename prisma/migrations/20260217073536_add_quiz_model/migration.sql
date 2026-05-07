@@ -9,8 +9,8 @@ CREATE TABLE "Quiz" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "blockId" TEXT NOT NULL,
     "title" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "Quiz_blockId_fkey" FOREIGN KEY ("blockId") REFERENCES "PageBlock" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -21,8 +21,8 @@ CREATE TABLE "Question" (
     "questionText" TEXT NOT NULL,
     "questionType" TEXT NOT NULL DEFAULT 'multiple',
     "order" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "Question_quizId_fkey" FOREIGN KEY ("quizId") REFERENCES "Quiz" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -33,14 +33,14 @@ CREATE TABLE "QuestionOption" (
     "optionText" TEXT NOT NULL,
     "isCorrect" BOOLEAN NOT NULL DEFAULT false,
     "order" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "QuestionOption_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- RedefineTables
-PRAGMA defer_foreign_keys=ON;
-PRAGMA foreign_keys=OFF;
+
+
+
 CREATE TABLE "new_Document" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "title" TEXT NOT NULL,
@@ -53,20 +53,20 @@ CREATE TABLE "new_Document" (
     "isAchieved" BOOLEAN,
     "status" TEXT NOT NULL DEFAULT 'submitted',
     "gradedBy" TEXT,
-    "gradedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "gradedAt" TIMESTAMP,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "Document_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 INSERT INTO "new_Document" ("authorId", "createdAt", "description", "fileSize", "fileType", "fileUrl", "gradedAt", "gradedBy", "id", "isAchieved", "score", "status", "title", "updatedAt") SELECT "authorId", "createdAt", "description", "fileSize", "fileType", "fileUrl", "gradedAt", "gradedBy", "id", "isAchieved", "score", "status", "title", "updatedAt" FROM "Document";
-DROP TABLE "Document";
+DROP TABLE "Document" CASCADE;
 ALTER TABLE "new_Document" RENAME TO "Document";
 CREATE INDEX "Document_authorId_idx" ON "Document"("authorId");
 CREATE INDEX "Document_fileType_idx" ON "Document"("fileType");
 CREATE INDEX "Document_createdAt_idx" ON "Document"("createdAt");
 CREATE INDEX "Document_status_idx" ON "Document"("status");
-PRAGMA foreign_keys=ON;
-PRAGMA defer_foreign_keys=OFF;
+
+
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Quiz_blockId_key" ON "Quiz"("blockId");
