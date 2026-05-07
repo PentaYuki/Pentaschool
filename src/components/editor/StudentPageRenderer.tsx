@@ -51,6 +51,8 @@ interface PageBlock {
   richTextContent?: string;
   // Canva fields
   slidesData?: any;
+  // Visibility
+  isHidden?: boolean;
   // Flashcard fields
   flashcardTitle?: string;
   flashcards?: Array<{
@@ -270,7 +272,9 @@ export default function StudentPageRenderer({
             {!currentPage.blocks?.length ? (
               <EmptyState message="Trang này chưa có nội dung." />
             ) : (
-              currentPage.blocks.map((block) => (
+              currentPage.blocks
+                .filter((block) => !block.isHidden)
+                .map((block) => (
                 <BlockWrapper key={block.id}>
                   {block.type === "VIDEO" && block.videoUrl && (
                     <StudentVideoViewer

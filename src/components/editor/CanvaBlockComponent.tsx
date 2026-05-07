@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Trash2, Palette, Edit3, ExternalLink } from "lucide-react";
+import { Trash2, Palette, Edit3, ExternalLink, Eye } from "lucide-react";
 import { CanvasEditorPro } from "../CanvasEditorPro";
 import CanvaSlideViewer from "./CanvaSlideViewer";
 import toast from "react-hot-toast";
@@ -32,6 +32,7 @@ export default function CanvaBlockComponent({
   const [zoom, setZoom] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isHidden, setIsHidden] = useState(block.isHidden ?? false);
   const [slidesData, setSlidesData] = useState(block.slidesData); // Track saved slides
   const BASE_WIDTH = 960; // Chiều rộng gốc của Canva
 
@@ -66,7 +67,8 @@ export default function CanvaBlockComponent({
   // Update local slides data when block changes
   useEffect(() => {
     setSlidesData(block.slidesData);
-  }, [block.id, block.slidesData]);
+    setIsHidden(block.isHidden ?? false);
+  }, [block.id, block.slidesData, block.isHidden]);
 
   const handleDelete = async () => {
     if (!window.confirm("Bạn có chắc muốn xóa bản thiết kế này?")) return;
@@ -79,6 +81,29 @@ export default function CanvaBlockComponent({
       onDelete();
     } catch (error) {
       toast.error("Lỗi khi xóa thiết kế");
+    }
+  };
+
+  const handleToggleHidden = async () => {
+    try {
+      setIsSaving(true);
+      const newHiddenState = !isHidden;
+      const response = await fetch(`/api/blocks/${block.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isHidden: newHiddenState }),
+      });
+      if (!response.ok) throw new Error("Failed to update block");
+      setIsHidden(newHiddenState);
+      toast.success(newHiddenState ? "Đã ẩn block" : "Đã hiển thị block");
+      if (onBlockUpdate) {
+        onBlockUpdate(block.id, { isHidden: newHiddenState });
+      }
+    } catch (error) {
+      toast.error("Lỗi khi cập nhật trạng thái block");
+      console.error(error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -116,16 +141,36 @@ export default function CanvaBlockComponent({
           <div className="flex items-center gap-3">
             <Palette className="w-6 h-6 text-purple-600" />
             <h3 className="text-xl font-bold">Khung Thiết Kế</h3>
+            {isHidden && (
+              <span className="text-xs bg-yellow-100 text-yellow-800 px-2.5 py-1 rounded-full font-medium">
+                Ẩn từ học sinh
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {!readOnly && (
-              <button
-                onClick={handleDelete}
-                className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
-                title="Xóa block"
-              >
-                <Trash2 size={18} />
-              </button>
+              <>
+                <button
+                  onClick={handleToggleHidden}
+                  disabled={isSaving}
+                  className={`p-2 rounded-lg transition ${
+                    isHidden
+                      ? "text-orange-600 hover:bg-orange-100"
+                      : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                  }`}
+                  title={isHidden ? "Hiển thị cho học sinh" : "Ẩn từ học sinh"}
+                >
+                  {isHidden ? "👁️" : "👁️‍🗨️"}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isSaving}
+                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
+                  title="Xóa block"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </>
             )}
           </div>
         </div>

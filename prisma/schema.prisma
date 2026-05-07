@@ -508,6 +508,7 @@ model PageBlock {
 
   content    String?
   slidesData String?
+  isHidden   Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -515,6 +516,7 @@ model PageBlock {
   @@index([pageId])
   @@index([type])
   @@index([order])
+  @@index([isHidden])
 }
 
 model PageDocument {

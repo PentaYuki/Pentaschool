@@ -11,6 +11,7 @@ const updateBlockSchema = z.object({
   interactions: z.string().optional(), // JSON string of interactions
   content: z.string().optional(),
   slidesData: z.string().optional(), // JSON string for canvas/slides data
+  isHidden: z.boolean().optional(),
   items: z.array(z.object({
     id: z.string(),
     title: z.string(),
@@ -213,6 +214,81 @@ export async function PUT(
     return NextResponse.json(block);
   } catch (error) {
     console.error(`[PUT /api/blocks] Error:`, error);
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : "Failed to update block",
+        details: error instanceof Error ? error.message : undefined
+      }, 
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+
+    // Check if block exists and user has permission
+    const existingBlock = await prisma.pageBlock.findUnique({
+      where: { id },
+      include: {
+        page: {
+          select: { authorId: true },
+        },
+      },
+    });
+
+    if (!existingBlock) {
+      return NextResponse.json(
+        { error: "Block not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if user has permission to update blocks (only teachers)
+    const author = await prisma.user.findUnique({
+      where: { id: existingBlock.page.authorId },
+      select: { role: true },
+    });
+
+    if (author && author.role !== 'TEACHER' && author.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: "Only teachers can update blocks" },
+        { status: 403 }
+      );
+    }
+
+    // Validate and update only provided fields
+    const data = updateBlockSchema.parse(body);
+    const block = await prisma.pageBlock.update({
+      where: { id },
+      data,
+      include: {
+        documents: true,
+        contentItems: true,
+        quizzes: {
+          orderBy: { order: "asc" },
+          include: {
+            questions: {
+              include: {
+                options: {
+                  orderBy: { order: "asc" },
+                },
+              },
+              orderBy: { order: "asc" },
+            },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(block);
+  } catch (error) {
+    console.error(`[PATCH /api/blocks] Error:`, error);
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : "Failed to update block",

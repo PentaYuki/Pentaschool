@@ -139,24 +139,25 @@ export default function CanvaSlideViewer({ slidesData = [], blockId }: CanvaSlid
   }, [idx, slides.length]);
 
   // ── Auto-play audio on slide change ──────────────────────────────────────
+  const handleAudioEnd = useCallback(() => {
+    setIsPlaying(false);
+    if (!autoNextAfterAudio) return;
+
+    const currentSlide = slides[idx];
+    const shouldBlockByQuiz = !!currentSlide?.quiz && !correct.has(currentSlide.id);
+    if (!shouldBlockByQuiz && idx < slides.length - 1) {
+      setIdx((prev) => prev + 1);
+    }
+  }, [idx, slides, correct, autoNextAfterAudio]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !slides[idx]?.audioUrl) return;
     audio.src = slides[idx].audioUrl!;
     audio.play().catch(() => {});
-    const onEnd = () => {
-      setIsPlaying(false);
-      if (!autoNextAfterAudio) return;
-
-      const currentSlide = slides[idx];
-      const shouldBlockByQuiz = !!currentSlide?.quiz && !correct.has(currentSlide.id);
-      if (!shouldBlockByQuiz && idx < slides.length - 1) {
-        setIdx((i) => i + 1);
-      }
-    };
-    audio.addEventListener("ended", onEnd);
-    return () => audio.removeEventListener("ended", onEnd);
-  }, [idx, slides, correct, autoNextAfterAudio]);
+    audio.addEventListener("ended", handleAudioEnd);
+    return () => audio.removeEventListener("ended", handleAudioEnd);
+  }, [idx, slides, handleAudioEnd]);
 
   // ── Derived values ────────────────────────────────────────────────────────
   const slide      = slides[idx];
